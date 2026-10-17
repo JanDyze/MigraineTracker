@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Might icon (animated)</title>
+  <style>
+    /* 3.6s loop. The storm M traces at constant speed (0–1.1s). As the trace hits each peak
+       (0.37s, 0.88s) a ghost copy swells out from that peak and fades: ba-dum. Then the calm
+       line draws, it all holds, fades, and repeats. Static for reduced-motion users. */
+    .storm, .ghost { stroke-dasharray: 1 2; animation: trace 3.6s linear infinite; }
+    .ghost { opacity: 0; transform-box: view-box; }
+    .ghost-a { transform-origin: 272px 384px; animation: trace 3.6s linear infinite, ripple-a 3.6s infinite; }
+    .ghost-b { transform-origin: 452px 384px; animation: trace 3.6s linear infinite, ripple-b 3.6s infinite; }
+    .calm { stroke-dasharray: 1 2; animation: calm 3.6s infinite; }
+    .mark { animation: fade 3.6s ease-in infinite; }
+
+    @keyframes trace {
+      0%        { stroke-dashoffset: 1.05; }
+      30.6%, 100% { stroke-dashoffset: 0; }
+    }
+    @keyframes ripple-a {
+      0%, 10.4% { opacity: 0; transform: scale(1); animation-timing-function: step-end; }
+      10.41%    { opacity: 0.75; transform: scale(1); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+      15.5%     { opacity: 0.5; }
+      28%, 100% { opacity: 0; transform: scale(1.55); }
+    }
+    @keyframes ripple-b {
+      0%, 24.3% { opacity: 0; transform: scale(1); animation-timing-function: step-end; }
+      24.31%    { opacity: 0.75; transform: scale(1); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+      29.4%     { opacity: 0.5; }
+      42%, 100% { opacity: 0; transform: scale(1.55); }
+    }
+    @keyframes calm {
+      0%, 30.6% { stroke-dashoffset: 1.2; animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1); }
+      45.8%, 100% { stroke-dashoffset: 0; }
+    }
+    @keyframes fade {
+      0%, 88% { opacity: 1; }
+      100%    { opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .storm, .calm, .mark { animation: none; stroke-dashoffset: 0; }
+      .ghost { display: none; }
+    }
+  </style>
+  <defs>
+    <linearGradient id="line" gradientUnits="userSpaceOnUse" x1="180" y1="0" x2="844" y2="0">
+      <stop offset="0.35" stop-color="#E8664F"/>
+      <stop offset="0.85" stop-color="#2E9C86"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="228" fill="#FFF4EC"/>
+  <g class="mark" fill="none" stroke="url(#line)" stroke-width="72" stroke-linecap="round" stroke-linejoin="round">
+    <path class="ghost ghost-a" pathLength="1" stroke-width="48" d="M180,660 L272,384 L362,592 L452,384 L530,572"/>
+    <path class="ghost ghost-b" pathLength="1" stroke-width="48" d="M180,660 L272,384 L362,592 L452,384 L530,572"/>
+    <path class="calm" pathLength="1" d="M530,572 C590,520 640,512 700,512 L844,512"/>
+    <path class="storm" pathLength="1" d="M180,660 L272,384 L362,592 L452,384 L530,572"/>
+  </g>
+</svg>

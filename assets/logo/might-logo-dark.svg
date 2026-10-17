@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" width="640" height="200">
+  <title>Might logo</title>
+  <defs>
+    <linearGradient id="line" gradientUnits="userSpaceOnUse" x1="180" y1="0" x2="844" y2="0">
+      <stop offset="0.35" stop-color="#E8664F"/>
+      <stop offset="0.85" stop-color="#2E9C86"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(20 20) scale(0.15625)">
+    <rect width="1024" height="1024" rx="228" fill="#2A2633"/>
+    <path d="M180,660 L272,384 L362,592 L452,384 L530,572 C590,520 640,512 700,512 L844,512"
+          fill="none" stroke="url(#line)" stroke-width="80" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g font-family="'Segoe UI', system-ui, Arial, sans-serif">
+    <!-- mi + t highlighted: MIgraine Tracker -->
+    <text x="206" y="116" font-size="108" font-weight="700" fill="#F2EEF5" letter-spacing="-3"><tspan fill="#F08470">mi</tspan>gh<tspan fill="#F08470">t</tspan></text>
+    <text x="212" y="164" font-size="30" font-weight="500" fill="#A9A3B3" letter-spacing="1.5"><tspan fill="#F08470" font-weight="700">mi</tspan>graine <tspan fill="#F08470" font-weight="700">t</tspan>racker</text>
+  </g>
+</svg>

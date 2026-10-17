@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Mighty icon: MT monogram</title>
+  <rect width="1024" height="1024" rx="228" fill="#17142B"/>
+  <!-- M and T share a stem: MIgraine Tracker -->
+  <polyline points="230,760 230,300 441,560 652,300 652,760"
+            fill="none" stroke="#FFFFFF" stroke-width="84" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="522" y1="300" x2="782" y2="300" stroke="#B9A4FF" stroke-width="84" stroke-linecap="round"/>
+</svg>

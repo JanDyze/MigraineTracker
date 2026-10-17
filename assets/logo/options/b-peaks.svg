@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Mighty icon: Peaks</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1D6F7A"/>
+      <stop offset="1" stop-color="#0B2E3A"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+  <!-- Two mountain peaks form the M: strength, and the second peak is lower -->
+  <path d="M424,740 L624,400 L824,740 Z" fill="#FFC56B" stroke="#FFC56B" stroke-width="40" stroke-linejoin="round"/>
+  <path d="M200,740 L404,300 L608,740 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="40" stroke-linejoin="round"/>
+</svg>

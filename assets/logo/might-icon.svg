@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Might icon: Storm to calm</title>
+  <defs>
+    <linearGradient id="line" gradientUnits="userSpaceOnUse" x1="180" y1="0" x2="844" y2="0">
+      <stop offset="0.35" stop-color="#E8664F"/>
+      <stop offset="0.85" stop-color="#2E9C86"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="228" fill="#FFF4EC"/>
+  <!-- A jagged M settles into a flat, calm line -->
+  <path d="M180,660 L272,384 L362,592 L452,384 L530,572 C590,520 640,512 700,512 L844,512"
+        fill="none" stroke="url(#line)" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Mighty app icon</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7656E3"/>
+      <stop offset="1" stop-color="#2E2373"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+  <!-- The M is a symptom trend line: the second peak is lower, showing improvement -->
+  <polyline points="232,720 392,300 512,560 632,410 760,720"
+            fill="none" stroke="#FFFFFF" stroke-width="88"
+            stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="760" cy="720" r="58" fill="#FFC56B"/>
+</svg>
