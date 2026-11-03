@@ -106,6 +106,20 @@ const GLYPHS: Record<string, ReactNode> = {
   download: <path d="M16 5v14M10 13l6 6 6-6M7 26h18" />,
   door: <path d="M13 6H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h5M15 16h12M22 11l5 5-5 5" />,
   moon: <path d="M18 5a11 11 0 1 0 9 15A9 9 0 0 1 18 5Z" fill="var(--fill, transparent)" />,
+  wave: <path d="M3 19c3.2-5 6.3-5 9.5 0s6.3 5 9.5 0 4.2-3.5 7-3.5" />,
+  book: (
+    <>
+      <F d="M5 7h8a3 3 0 0 1 3 3v16a2.5 2.5 0 0 0-2.5-2.5H5Z" />
+      <path d="M5 7h8a3 3 0 0 1 3 3v16a2.5 2.5 0 0 0-2.5-2.5H5ZM27 7h-8a3 3 0 0 0-3 3v16a2.5 2.5 0 0 1 2.5-2.5H27Z" />
+    </>
+  ),
+  chat: (
+    <>
+      <F d="M7 7h18a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H14l-6 5v-5H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3Z" />
+      <path d="M7 7h18a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H14l-6 5v-5H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3Z" />
+    </>
+  ),
+  send: <path d="M5 15.5L27 6l-8.5 21-4-8.5ZM14.5 18.5L27 6" />,
   auto: (
     <>
       <circle cx="16" cy="16" r="10" />

@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <title>Might icon: Storm to calm</title>
+  <title>Might icon: Swell to calm</title>
   <defs>
-    <linearGradient id="line" gradientUnits="userSpaceOnUse" x1="180" y1="0" x2="844" y2="0">
-      <stop offset="0.35" stop-color="#E8664F"/>
-      <stop offset="0.85" stop-color="#2E9C86"/>
+    <linearGradient id="line" gradientUnits="userSpaceOnUse" x1="168" y1="0" x2="856" y2="0">
+      <stop offset="0.3" stop-color="#E86F58"/>
+      <stop offset="0.85" stop-color="#2E8C84"/>
     </linearGradient>
   </defs>
-  <rect width="1024" height="1024" rx="228" fill="#FFF4EC"/>
-  <!-- A jagged M settles into a flat, calm line -->
-  <path d="M180,660 L272,384 L362,592 L452,384 L530,572 C590,520 640,512 700,512 L844,512"
-        fill="none" stroke="url(#line)" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect width="1024" height="1024" rx="228" fill="#FFFFFF"/>
+  <!-- Two swells, the second smaller, settle into a flat line of calm water -->
+  <path d="M168,622 C212,622 236,402 296,402 C356,402 360,622 412,622 C464,622 476,472 528,472 C580,472 596,622 648,622 L856,622"
+        fill="none" stroke="url(#line)" stroke-width="78" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

@@ -1,52 +1,48 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAttacks } from '../lib/store'
-import { level } from '../lib/attacks'
-import { daysTouched } from '../lib/format'
+import { levelLabel } from '../lib/attacks'
+import { attackDuration, formatDuration } from '../lib/format'
 import { clearDays } from '../lib/days'
-import { EntryRow, Fig, Readout } from '../components/Instrument'
-import { Trace } from '../components/Trace'
+import { DiaryLine, Tile } from '../components/Journal'
+import { Wave } from '../components/Wave'
+import { Boat } from '../components/Boat'
 import { Glyph } from '../components/Glyph'
 import { LogoMark, Wordmark } from '../components/Logo'
 
 const DAY = 86_400_000
-const today = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
-const tick = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' })
-const hm = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+const longDate = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+const shortDate = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' })
+const hm = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
 
-/** Current time, refreshed every `ms` (every second while the stopwatch is running). */
-function useNow(ms: number) {
+/** Re-render every minute so "rough waters for 2 h 10 m" stays current. */
+function useNow() {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), ms)
+    const t = setInterval(() => setNow(Date.now()), 60_000)
     return () => clearInterval(t)
-  }, [ms])
+  }, [])
   return now
-}
-
-function stopwatch(ms: number) {
-  const s = Math.max(0, Math.floor(ms / 1000))
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`
 }
 
 export function HomePage() {
   const { attacks, loading, error, save } = useAttacks()
-  const ongoing = attacks.find((a) => !a.ended_at)
-  const now = useNow(ongoing ? 1000 : 60_000)
+  const now = useNow()
   const [ending, setEnding] = useState(false)
 
-  const from = new Date(now - 29 * DAY)
+  const ongoing = attacks.find((a) => !a.ended_at)
+  const from = new Date(now - 13 * DAY)
   from.setHours(0, 0, 0, 0)
-  const ticks = [0, 7, 14, 21, 28].map((day) => ({ day, label: tick.format(new Date(from.getTime() + day * DAY)) }))
-
-  const recent = attacks.filter((a) => new Date(a.started_at).getTime() >= from.getTime())
   const monthStart = new Date(now)
   monthStart.setDate(1)
   monthStart.setHours(0, 0, 0, 0)
   const thisMonth = attacks.filter((a) => new Date(a.started_at) >= monthStart).length
-  const avgLevel = recent.length ? recent.reduce((s, a) => s + level(a.intensity), 0) / recent.length : null
-  const migraineDays = new Set(recent.flatMap((a) => daysTouched(a.started_at, a.ended_at))).size
+  const lengths = attacks
+    .filter((a) => a.ended_at)
+    .slice(0, 20)
+    .map((a) => attackDuration(a.started_at, a.ended_at))
+    .sort((a, b) => a - b)
+  const usual = lengths.length ? formatDuration(lengths[Math.floor(lengths.length / 2)]) : '–'
   const streak = clearDays(attacks)
   const lastEnd = attacks.find((a) => a.ended_at)?.ended_at
 
@@ -63,6 +59,19 @@ export function HomePage() {
     }
   }
 
+  let headline = 'Calm waters'
+  let sub = 'Nothing logged yet. Tap below when a migraine hits.'
+  if (ongoing) {
+    headline = 'Rough waters'
+    sub = `${levelLabel(ongoing.intensity)}, for ${formatDuration(attackDuration(ongoing.started_at, null, now))}. Grami's here with you.`
+  } else if (streak === 0 && lastEnd) {
+    headline = 'Calm again'
+    sub = `since ${hm.format(new Date(lastEnd))}. Take it easy today.`
+  } else if (streak !== null) {
+    headline = `${streak} calm ${streak === 1 ? 'day' : 'days'}`
+    sub = streak >= 3 ? 'in a row. Smooth sailing.' : 'in a row. Nice.'
+  }
+
   return (
     <div className="page">
       <header className="topbar">
@@ -70,84 +79,76 @@ export function HomePage() {
           <LogoMark size={30} tile={false} />
           <Wordmark />
         </div>
-        <span className="topbar-date">{today.format(now)}</span>
         <Link to="/settings" className="icon-btn" aria-label="Settings">
           <Glyph name="settings" size={22} />
         </Link>
       </header>
 
-      {error && <p className="notice">Couldn't load your record: {error}</p>}
+      {error && <p className="notice">Couldn't load your journal: {error}</p>}
 
-      <section className="hero" aria-live="polite">
-        {ongoing ? (
-          <>
-            <p className="kicker kicker-live">Recording</p>
-            <h1 className="statement">Migraine in progress.</h1>
-            <p className="stopwatch">{stopwatch(now - new Date(ongoing.started_at).getTime())}</p>
-            <div className="btn-row">
-              <button className="btn btn-pen" onClick={endOngoing} disabled={ending}>
-                {ending ? 'Saving…' : 'It’s over'}
-              </button>
-              <Link to={`/log/${ongoing.id}`} className="btn">
-                Edit entry
-              </Link>
-            </div>
-          </>
-        ) : (
-          <>
-            <h1 className="statement">
-              {loading
-                ? ' '
-                : streak === null
-                  ? 'Nothing recorded yet.'
-                  : streak === 0
-                    ? `Clear since ${hm.format(new Date(lastEnd!))}.`
-                    : `Clear for ${streak} ${streak === 1 ? 'day' : 'days'}.`}
-            </h1>
-            <Link to="/log" className="record-btn">
-              <span className="record-dot">
-                <Glyph name="plus" size={28} />
-              </span>
-              <span className="record-text">
-                Log a migraine
-                <small>takes five seconds</small>
-              </span>
-            </Link>
-          </>
-        )}
+      <section className="hello" aria-live="polite">
+        <span className="hand-date">{longDate.format(now)}</span>
+        <h1 className="headline">
+          <mark key={loading ? 'loading' : headline}>{loading ? ' ' : headline}</mark>
+        </h1>
+        <p className="sub">{loading ? ' ' : sub}</p>
       </section>
 
-      <section>
-        <Trace
-          attacks={attacks}
-          from={from}
-          days={30}
-          now={now}
-          ticks={ticks}
-          label={`Last 30 days: ${recent.length} migraines on ${migraineDays} days`}
-        />
-        <Fig n={1}>Last 30 days. Spike height is how bad; width is how long.</Fig>
+      <section className="card sea-card">
+        <div className="card-head">
+          <h2>Last two weeks</h2>
+          {/* Grami floats in the corner of the tide; tap to chat */}
+          <Link to="/chat" className="grami" aria-label="Ask Grami about your migraines">
+            <span className="grami-hint" aria-hidden="true">
+              ask me!
+            </span>
+            <Boat mood={ongoing ? 'hurt' : 'calm'} size={120} />
+          </Link>
+        </div>
+        <Wave attacks={attacks} from={from} days={14} label="Your last two weeks" />
+        <div className="tide-ticks" aria-hidden="true">
+          <span>{shortDate.format(from)}</span>
+          <span>{shortDate.format(new Date(from.getTime() + 7 * DAY))}</span>
+          <span>today</span>
+        </div>
       </section>
 
-      <section className="readouts">
-        <Readout label="This month" value={String(thisMonth).padStart(2, '0')} />
-        <Readout label="Days hit · 30d" value={String(migraineDays).padStart(2, '0')} />
-        <Readout label="Avg level" value={avgLevel === null ? '–' : avgLevel.toFixed(1)} unit="/5" />
+      {ongoing ? (
+        <div className="btn-row">
+          <button className="btn btn-deep" onClick={endOngoing} disabled={ending}>
+            {ending ? 'Saving…' : 'It’s over'}
+          </button>
+          <Link to={`/log/${ongoing.id}`} className="btn btn-soft">
+            Update
+          </Link>
+        </div>
+      ) : (
+        <Link to="/log" className="btn btn-deep btn-big">
+          <span className="btn-plus">
+            <Glyph name="plus" size={18} />
+          </span>
+          I have a migraine
+        </Link>
+      )}
+
+      <section className="tiles">
+        <Tile value={thisMonth} label="this month" />
+        <Tile value={usual} label="usual length" />
       </section>
 
-      <section>
-        <div className="section-head">
-          <h2 className="label">Latest entries</h2>
-          {attacks.length > 3 && <Link to="/diary">Full record</Link>}
+      <section className="card">
+        <div className="card-head">
+          <h2>Recent</h2>
+          {attacks.length > 3 && <Link to="/diary">see journal</Link>}
         </div>
         {loading ? (
           <p className="muted">Loading…</p>
         ) : attacks.length === 0 ? (
-          <p className="empty">No entries yet. The line stays flat until you need it.</p>
+          <p className="empty">Your journal is empty. Hopefully it stays that way!</p>
         ) : (
-          <div className="entries">
+          <div className="diary">
             {attacks.slice(0, 3).map((a) => (
-              <EntryRow key={a.id} attack={a} />
+              <DiaryLine key={a.id} attack={a} />
             ))}
           </div>
         )}

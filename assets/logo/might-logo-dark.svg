@@ -1,19 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" width="640" height="200">
   <title>Might logo</title>
   <defs>
-    <linearGradient id="line" gradientUnits="userSpaceOnUse" x1="180" y1="0" x2="844" y2="0">
-      <stop offset="0.35" stop-color="#E8664F"/>
-      <stop offset="0.85" stop-color="#2E9C86"/>
+    <linearGradient id="line" gradientUnits="userSpaceOnUse" x1="168" y1="0" x2="856" y2="0">
+      <stop offset="0.3" stop-color="#E86F58"/>
+      <stop offset="0.85" stop-color="#2E8C84"/>
     </linearGradient>
   </defs>
   <g transform="translate(20 20) scale(0.15625)">
-    <rect width="1024" height="1024" rx="228" fill="#2A2633"/>
-    <path d="M180,660 L272,384 L362,592 L452,384 L530,572 C590,520 640,512 700,512 L844,512"
+    <rect width="1024" height="1024" rx="228" fill="#16252A"/>
+    <path d="M168,622 C212,622 236,402 296,402 C356,402 360,622 412,622 C464,622 476,472 528,472 C580,472 596,622 648,622 L856,622"
           fill="none" stroke="url(#line)" stroke-width="80" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-  <g font-family="'Segoe UI', system-ui, Arial, sans-serif">
-    <!-- mi + t highlighted: MIgraine Tracker -->
-    <text x="206" y="116" font-size="108" font-weight="700" fill="#F2EEF5" letter-spacing="-3"><tspan fill="#F08470">mi</tspan>gh<tspan fill="#F08470">t</tspan></text>
-    <text x="212" y="164" font-size="30" font-weight="500" fill="#A9A3B3" letter-spacing="1.5"><tspan fill="#F08470" font-weight="700">mi</tspan>graine <tspan fill="#F08470" font-weight="700">t</tspan>racker</text>
-  </g>
+  <!-- mi + t highlighted: MIgraine Tracker. Wordmark is set in Caveat, like the app. -->
+  <text x="204" y="118" font-family="Caveat, 'Segoe Print', cursive" font-size="112" font-weight="700" fill="#E3EFED"><tspan fill="#F08B75">mi</tspan>gh<tspan fill="#F08B75">t</tspan></text>
+  <text x="210" y="164" font-family="Outfit, 'Segoe UI', system-ui, sans-serif" font-size="28" font-weight="500" fill="#9DB5B3" letter-spacing="1.5"><tspan fill="#F08B75" font-weight="700">mi</tspan>graine <tspan fill="#F08B75" font-weight="700">t</tspan>racker</text>
 </svg>

@@ -75,15 +75,15 @@ export const RELIEF = [
 ] as const
 
 /**
- * Five levels instead of 1–10 (drawn as spike height on the trace). Stored as even intensities so
+ * Five levels instead of 1–10 (drawn as swell height on the wave). Stored as even intensities so
  * the old 1–10 scale keeps working; any stored value maps to its nearest level with `level()`.
  */
 export const LEVELS = [
   { level: 1, intensity: 2, label: 'Mild' },
-  { level: 2, intensity: 4, label: 'Moderate' },
-  { level: 3, intensity: 6, label: 'Strong' },
-  { level: 4, intensity: 8, label: 'Severe' },
-  { level: 5, intensity: 10, label: 'Extreme' },
+  { level: 2, intensity: 4, label: 'Ouch' },
+  { level: 3, intensity: 6, label: 'Bad' },
+  { level: 4, intensity: 8, label: 'Awful' },
+  { level: 5, intensity: 10, label: 'Worst' },
 ] as const
 
 export type Level = 1 | 2 | 3 | 4 | 5

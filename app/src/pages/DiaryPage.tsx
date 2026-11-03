@@ -1,17 +1,20 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAttacks } from '../lib/store'
-import { dayKey, daysTouched, formatMonth } from '../lib/format'
 import type { Attack } from '../lib/attacks'
-import { EntryRow } from '../components/Instrument'
-import { Trace } from '../components/Trace'
+import { dayKey, daysTouched } from '../lib/format'
+import { DiaryLine } from '../components/Journal'
+import { Wave } from '../components/Wave'
+import { Glyph } from '../components/Glyph'
 
 const PAGE = 6
+const monthFmt = new Intl.DateTimeFormat(undefined, { month: 'long' })
+const yearFmt = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' })
 
-/** The record: one trace strip per month (newest first) with that month's entries underneath. */
+/** The journal: one tide per month (newest first) with that month's pages underneath. */
 export function DiaryPage() {
   const { attacks, loading } = useAttacks()
   const [shown, setShown] = useState(PAGE)
-  const now = Date.now()
 
   // Every month from the oldest entry up to this month, newest first.
   const months: Date[] = []
@@ -23,63 +26,52 @@ export function DiaryPage() {
   return (
     <div className="page">
       <header className="topbar">
-        <h1 className="title">Record</h1>
-        <span className="topbar-date">
-          {attacks.length} {attacks.length === 1 ? 'entry' : 'entries'}
-        </span>
+        <h1 className="hand-title">Journal</h1>
+        <Link to="/log" className="icon-btn icon-btn-deep" aria-label="Log a migraine">
+          <Glyph name="plus" size={22} />
+        </Link>
       </header>
 
-      {loading ? (
-        <p className="muted">Loading…</p>
-      ) : (
-        months.slice(0, shown).map((m) => <Month key={m.getTime()} month={m} attacks={attacks} now={now} />)
-      )}
+      {loading ? <p className="muted">Loading…</p> : months.slice(0, shown).map((m) => <Month key={m.getTime()} month={m} attacks={attacks} />)}
 
       {months.length > shown && (
-        <button className="btn btn-quiet" onClick={() => setShown(shown + PAGE)}>
-          Show earlier months
+        <button className="btn btn-soft" onClick={() => setShown(shown + PAGE)}>
+          Earlier months
         </button>
       )}
     </div>
   )
 }
 
-function Month({ month, attacks, now }: { month: Date; attacks: Attack[]; now: number }) {
+function Month({ month, attacks }: { month: Date; attacks: Attack[] }) {
   const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()
   const end = new Date(month.getFullYear(), month.getMonth() + 1, 1).getTime()
-  const isCurrent = now < end
+  const isThisYear = month.getFullYear() === new Date().getFullYear()
   const list = attacks.filter((a) => {
     const t = new Date(a.started_at).getTime()
     return t >= month.getTime() && t < end
   })
-  const monthKey = dayKey(month).slice(0, 7) // "2026-10"
+  const monthKey = dayKey(month).slice(0, 7)
   const hitDays = new Set(list.flatMap((a) => daysTouched(a.started_at, a.ended_at)).filter((k) => k.startsWith(monthKey))).size
+  const name = isThisYear ? monthFmt.format(month) : yearFmt.format(month)
 
   return (
     <section className="month">
       <div className="month-head">
-        <h2 className="month-name">{formatMonth(month)}</h2>
-        <span className="label">
-          {String(list.length).padStart(2, '0')} migraines · {String(hitDays).padStart(2, '0')} days
-        </span>
+        <h2 className="hand">{name}</h2>
+        <span className="muted">{list.length ? `${list.length} migraine${list.length === 1 ? '' : 's'} · ${hitDays} day${hitDays === 1 ? '' : 's'}` : 'all calm'}</span>
       </div>
-      <Trace
-        attacks={attacks}
-        from={month}
-        days={days}
-        now={isCurrent ? now : undefined}
-        ticks={[1, 8, 15, 22, 29].filter((d) => d <= days).map((d) => ({ day: d - 1, label: String(d) }))}
-        height={96}
-        label={`${formatMonth(month)}: ${list.length} migraines`}
-      />
-      {list.length === 0 ? (
-        <p className="empty">{isCurrent ? 'Flat line so far this month.' : 'A flat line. Clear all month.'}</p>
-      ) : (
-        <div className="entries">
+      <div className="card sea-card">
+        <Wave attacks={attacks} from={month} days={days} label={`${name}: ${list.length} migraines`} />
+      </div>
+      {list.length > 0 ? (
+        <div className="card diary">
           {list.map((a) => (
-            <EntryRow key={a.id} attack={a} />
+            <DiaryLine key={a.id} attack={a} />
           ))}
         </div>
+      ) : (
+        <p className="empty">Not a ripple this month.</p>
       )}
     </section>
   )

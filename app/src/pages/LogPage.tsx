@@ -1,34 +1,34 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAttacks } from '../lib/store'
-import { LOCATIONS, MEDICATIONS, RELIEF, SYMPTOMS, TRIGGERS, customValues, emptyAttack, type AttackInput } from '../lib/attacks'
+import { LOCATIONS, MEDICATIONS, RELIEF, SYMPTOMS, TRIGGERS, customValues, emptyAttack, level, levelLabel, type AttackInput } from '../lib/attacks'
 import { fromLocalInput, toLocalInput } from '../lib/format'
-import { LevelPicker, TagPicker } from '../components/Pickers'
+import { CheckList, CircleWords, LevelSlider } from '../components/Journal'
+import { Boat } from '../components/Boat'
 import { Glyph } from '../components/Glyph'
+import { useLeave } from '../lib/motion'
+
+const hm = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
 
 export function LogPage() {
   const { id } = useParams()
   const { attacks, loading } = useAttacks()
   const existing = id ? attacks.find((a) => a.id === id) : undefined
 
-  if (id && loading) return <div className="page log-page muted">Loading…</div>
-  if (id && !existing) return <div className="page log-page">This entry no longer exists.</div>
+  if (id && loading) return <div className="sheet-page"><div className="sheet muted">Loading…</div></div>
+  if (id && !existing) return <div className="sheet-page"><div className="sheet">This page no longer exists.</div></div>
 
   // key resets the form when switching between entries
   return <LogForm key={id ?? 'new'} id={id} initial={existing ?? emptyAttack()} />
 }
 
-const MED_PRESETS = MEDICATIONS.map((m) => ({ value: m, label: m, icon: 'pill' }))
+const MED_OPTIONS = MEDICATIONS.map((m) => ({ value: m, label: m }))
+const RELIEF_OPTIONS = RELIEF.map((r) => ({ value: String(r.value), label: r.label }))
 
-/** A numbered section of the entry sheet: "01 — How bad". */
-function Step({ n, title, optional, children }: { n: number; title: string; optional?: boolean; children: ReactNode }) {
+function Part({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="step">
-      <h2 className="step-head">
-        <span className="step-n">{String(n).padStart(2, '0')}</span>
-        {title}
-        {optional && <span className="step-opt">optional</span>}
-      </h2>
+    <section className="part">
+      <h2 className="hand">{title}</h2>
       {children}
     </section>
   )
@@ -43,7 +43,8 @@ function LogForm({ id, initial }: { id?: string; initial: AttackInput }) {
   const [error, setError] = useState<string | null>(null)
 
   // Go back if we came from inside the app, otherwise home (e.g. /log opened directly).
-  const goBack = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate('/', { replace: true }))
+  const { leaving, leave } = useLeave()
+  const goBack = () => leave(() => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate('/', { replace: true })))
 
   const set = <K extends keyof AttackInput>(key: K, value: AttackInput[K]) => setForm((f) => ({ ...f, [key]: value }))
 
@@ -70,7 +71,7 @@ function LogForm({ id, initial }: { id?: string; initial: AttackInput }) {
   }
 
   async function onDelete() {
-    if (!id || !confirm('Delete this entry? This can’t be undone.')) return
+    if (!id || !confirm('Tear out this page? This can’t be undone.')) return
     setBusy(true)
     try {
       await remove(id)
@@ -85,22 +86,36 @@ function LogForm({ id, initial }: { id?: string; initial: AttackInput }) {
     customValues(field, attacks, presets.map((p) => p.value))
 
   return (
-    <form className="page log-page" onSubmit={submit}>
-      <header className="topbar">
-        <button type="button" className="icon-btn" onClick={goBack} aria-label="Back">
-          <Glyph name="back" size={22} />
-        </button>
-        <h1 className="title">{id ? 'Edit entry' : 'New entry'}</h1>
-      </header>
+    <div className={`sheet-page${leaving ? ' leaving' : ''}`}>
+      <form className="sheet log-sheet" onSubmit={submit}>
+        <div className="sheet-handle" />
+        <header className="sheet-head">
+          <div>
+            <h1 className="hand-title">{id ? 'This page' : 'A new page'}</h1>
+            <span className="muted">
+              Started {hm.format(new Date(form.started_at))}
+              {ongoing ? ' · still going' : ''}
+            </span>
+          </div>
+          <button type="button" className="icon-btn" onClick={goBack} aria-label="Close">
+            <Glyph name="close" size={20} />
+          </button>
+        </header>
 
-      <Step n={1} title="How bad">
-        <LevelPicker value={form.intensity} onChange={(v) => set('intensity', v)} />
-      </Step>
+        <section className="card strength">
+          <div className="strength-head">
+            <Boat mood={level(form.intensity) >= 3 ? 'hurt' : 'calm'} size={86} water={false} />
+            <div>
+              <span className="label-soft">How strong?</span>
+              <span key={form.intensity} className="strength-word">{levelLabel(form.intensity).toLowerCase()}</span>
+            </div>
+          </div>
+          <LevelSlider value={form.intensity} onChange={(v) => set('intensity', v)} />
+        </section>
 
-      <Step n={2} title="When">
-        <div className="when">
+        <section className="card when">
           <label className="when-row">
-            <span className="label">Started</span>
+            <span>Started</span>
             <input
               type="datetime-local"
               required
@@ -109,12 +124,12 @@ function LogForm({ id, initial }: { id?: string; initial: AttackInput }) {
             />
           </label>
           <label className="when-row switch-row">
-            <span className="label">Still going</span>
+            <span>Still going</span>
             <input type="checkbox" role="switch" checked={ongoing} onChange={(e) => toggleOngoing(e.target.checked)} />
           </label>
           {!ongoing && form.ended_at && (
             <label className="when-row">
-              <span className="label">Ended</span>
+              <span>Ended</span>
               <input
                 type="datetime-local"
                 required
@@ -123,61 +138,62 @@ function LogForm({ id, initial }: { id?: string; initial: AttackInput }) {
               />
             </label>
           )}
-        </div>
-      </Step>
+        </section>
 
-      <Step n={3} title="Where" optional>
-        <TagPicker presets={LOCATIONS} customs={customs('locations', LOCATIONS)} value={form.locations} onChange={(v) => set('locations', v)} addLabel="Other" icon="head" />
-      </Step>
+        <Part title="Where?">
+          <CircleWords options={LOCATIONS} customs={customs('locations', LOCATIONS)} value={form.locations} onChange={(v) => set('locations', v)} add="other" />
+        </Part>
 
-      <Step n={4} title="Possible triggers" optional>
-        <TagPicker presets={TRIGGERS} customs={customs('triggers', TRIGGERS)} value={form.triggers} onChange={(v) => set('triggers', v)} addLabel="Other" />
-      </Step>
+        <Part title="Maybe because…">
+          <CheckList options={TRIGGERS} customs={customs('triggers', TRIGGERS)} value={form.triggers} onChange={(v) => set('triggers', v)} add="other" />
+        </Part>
 
-      <Step n={5} title="Symptoms" optional>
-        <TagPicker presets={SYMPTOMS} customs={customs('symptoms', SYMPTOMS)} value={form.symptoms} onChange={(v) => set('symptoms', v)} addLabel="Other" />
-      </Step>
+        <Part title="How else do you feel?">
+          <CheckList options={SYMPTOMS} customs={customs('symptoms', SYMPTOMS)} value={form.symptoms} onChange={(v) => set('symptoms', v)} add="other" />
+        </Part>
 
-      <Step n={6} title="Medication" optional>
-        <TagPicker
-          presets={MED_PRESETS}
-          customs={customValues('medications', attacks, MEDICATIONS)}
-          value={form.medications}
-          onChange={(v) => set('medications', v)}
-          addLabel="Add"
-          icon="pill"
-        />
-        {form.medications.length > 0 && (
-          <div className="relief">
-            <span className="label">Did it help?</span>
-            <div className="segmented" role="radiogroup" aria-label="Did it help?">
-              {RELIEF.map((r) => (
-                <button key={r.value} type="button" role="radio" aria-checked={form.relief === r.value} onClick={() => set('relief', form.relief === r.value ? null : r.value)}>
-                  {r.label}
-                </button>
-              ))}
+        <Part title="Took anything?">
+          <CircleWords
+            marker
+            options={MED_OPTIONS}
+            customs={customValues('medications', attacks, MEDICATIONS)}
+            value={form.medications}
+            onChange={(v) => set('medications', v)}
+            add="add"
+          />
+          {form.medications.length > 0 && (
+            <div className="relief">
+              <span className="label-soft">Did it help?</span>
+              <CircleWords
+                options={RELIEF_OPTIONS}
+                value={form.relief === null ? [] : [String(form.relief)]}
+                onChange={(v) => {
+                  const picked = v.filter((x) => x !== String(form.relief))
+                  set('relief', picked.length ? Number(picked[0]) : null)
+                }}
+              />
             </div>
-          </div>
+          )}
+        </Part>
+
+        <Part title="Notes">
+          <textarea rows={3} placeholder="anything worth remembering?" value={form.notes ?? ''} onChange={(e) => set('notes', e.target.value)} />
+        </Part>
+
+        {id && (
+          <button type="button" className="btn btn-quiet btn-danger" onClick={onDelete} disabled={busy}>
+            <Glyph name="trash" size={18} />
+            Tear out this page
+          </button>
         )}
-      </Step>
 
-      <Step n={7} title="Notes" optional>
-        <textarea rows={3} placeholder="Anything worth remembering?" value={form.notes ?? ''} onChange={(e) => set('notes', e.target.value)} />
-      </Step>
-
-      {id && (
-        <button type="button" className="btn btn-quiet btn-danger" onClick={onDelete} disabled={busy}>
-          <Glyph name="trash" size={18} />
-          Delete entry
-        </button>
-      )}
-
-      <div className="save-bar">
-        {error && <p className="notice">{error}</p>}
-        <button className="btn btn-ink btn-block" disabled={busy}>
-          {busy ? 'Saving…' : 'Save entry'}
-        </button>
-      </div>
-    </form>
+        <div className="save-bar">
+          {error && <p className="notice">{error}</p>}
+          <button className="btn btn-deep btn-block btn-big" disabled={busy}>
+            {busy ? 'Saving…' : 'Save this page'}
+          </button>
+        </div>
+      </form>
+    </div>
   )
 }

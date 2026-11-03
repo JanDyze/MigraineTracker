@@ -59,12 +59,12 @@ export function AuthPage() {
         <h1>
           <Wordmark />
         </h1>
-        <p className="muted">A quiet record of your migraines.</p>
+        <p className="muted">Your calm little migraine journal.</p>
       </div>
 
       {google && (
         <>
-          <button type="button" className="btn btn-google btn-block" onClick={signInWithGoogle} disabled={busy}>
+          <button type="button" className="btn btn-soft btn-google btn-block" onClick={signInWithGoogle} disabled={busy}>
             <GoogleG />
             Continue with Google
           </button>
@@ -91,7 +91,7 @@ export function AuthPage() {
           />
         </label>
         {message && <p className="notice">{message}</p>}
-        <button className="btn btn-primary btn-block" disabled={busy}>
+        <button className="btn btn-deep btn-block" disabled={busy}>
           {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
         </button>
       </form>

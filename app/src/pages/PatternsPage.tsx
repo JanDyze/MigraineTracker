@@ -1,19 +1,19 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAttacks } from '../lib/store'
-import { labelFor, level, presetFor, type Attack, type TagField } from '../lib/attacks'
+import { labelFor, level, levelLabel, type Attack, type TagField } from '../lib/attacks'
 import { attackDuration, daysTouched, formatDuration } from '../lib/format'
-import { Fig, Readout } from '../components/Instrument'
-import { Glyph } from '../components/Glyph'
+import { Tile } from '../components/Journal'
+import { Boat } from '../components/Boat'
 
 const RANGES = [
-  { days: 30, label: '30 D' },
-  { days: 90, label: '90 D' },
+  { days: 30, label: '30 days' },
+  { days: 90, label: '90 days' },
   { days: 0, label: 'All' },
 ]
 
 const DAY = 86_400_000
 
-/** Findings: what the record says, as numbered figures. */
 export function PatternsPage() {
   const { attacks, loading } = useAttacks()
   const [rangeDays, setRangeDays] = useState(30)
@@ -34,60 +34,89 @@ export function PatternsPage() {
   return (
     <div className="page">
       <header className="topbar">
-        <h1 className="title">Findings</h1>
-        <div className="segmented" role="radiogroup" aria-label="Time range">
-          {RANGES.map((r) => (
-            <button key={r.days} type="button" role="radio" aria-checked={rangeDays === r.days} onClick={() => setRangeDays(r.days)}>
-              {r.label}
-            </button>
-          ))}
-        </div>
+        <h1 className="hand-title">Patterns</h1>
       </header>
 
-      <section className="readouts readouts-2">
-        <Readout label="Migraines" value={String(inRange.length).padStart(2, '0')} />
-        <Readout label="Days hit" value={String(days).padStart(2, '0')} />
-        <Readout label="Avg level" value={avg === null ? '–' : avg.toFixed(1)} unit="/5" />
-        <Readout label="Avg length" value={avgLength === null ? '–' : formatDuration(avgLength)} />
+      <div className="pills" role="radiogroup" aria-label="Time range">
+        {RANGES.map((r) => (
+          <button key={r.days} type="button" role="radio" aria-checked={rangeDays === r.days} onClick={() => setRangeDays(r.days)}>
+            {r.label}
+          </button>
+        ))}
+      </div>
+
+      <section className="tiles">
+        <Tile value={inRange.length} label="migraines" />
+        <Tile value={days} label="days hit" />
+        <Tile value={avg === null ? '–' : levelLabel(Math.round(avg) * 2).toLowerCase()} label="usually" />
+        <Tile value={avgLength === null ? '–' : formatDuration(avgLength)} label="average length" />
       </section>
 
+      <Link to="/chat" className="card ask-grami">
+        <Boat mood="talk" size={92} water={false} />
+        <span>
+          <b>Want it in words?</b>
+          <span className="muted">Ask Grami what triggered you or what helped.</span>
+        </span>
+      </Link>
+
       {inRange.length < 3 ? (
-        <p className="empty">A few more entries and the findings start to mean something.</p>
+        <p className="empty">A few more pages and patterns start to show.</p>
       ) : (
         <>
-          <Ranked n={1} title="Possible triggers" field="triggers" attacks={inRange} />
-          <Onset n={2} attacks={inRange} />
-          <Ranked n={3} title="Symptoms" field="symptoms" attacks={inRange} />
-          <Medication n={4} attacks={inRange} />
+          <Bars title="Usual suspects" rows={rank(inRange, 'triggers', inRange.length)} empty="No triggers ticked yet." />
+          <Onset attacks={inRange} />
+          <Bars title="How it feels" rows={rank(inRange, 'symptoms', inRange.length)} empty="No symptoms ticked yet." />
+          <Bars title="What helped" rows={meds(inRange)} empty="No medication noted yet." />
         </>
       )}
     </div>
   )
 }
 
-function topValues(attacks: Attack[], field: TagField) {
-  const map = new Map<string, Attack[]>()
-  for (const a of attacks) for (const v of a[field]) map.set(v, [...(map.get(v) ?? []), a])
-  return [...map.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 5)
+type Row = { label: string; count: number; note: string }
+
+function rank(attacks: Attack[], field: TagField, total: number): Row[] {
+  const m = new Map<string, number>()
+  for (const a of attacks) for (const v of a[field]) m.set(v, (m.get(v) ?? 0) + 1)
+  return [...m.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([v, n]) => ({ label: labelFor(v).toLowerCase(), count: n, note: `${n} of ${total}` }))
 }
 
-type Row = { value: string; icon: string; count: number; note: string }
+function meds(attacks: Attack[]): Row[] {
+  const m = new Map<string, { took: number; rated: number; helped: number }>()
+  for (const a of attacks)
+    for (const v of a.medications) {
+      const e = m.get(v) ?? { took: 0, rated: 0, helped: 0 }
+      e.took++
+      if (a.relief !== null) {
+        e.rated++
+        if (a.relief >= 2) e.helped++
+      }
+      m.set(v, e)
+    }
+  return [...m.entries()]
+    .sort((a, b) => b[1].took - a[1].took)
+    .slice(0, 5)
+    .map(([v, e]) => ({ label: v.toLowerCase(), count: e.took, note: e.rated ? `helped ${e.helped} of ${e.rated}` : `${e.took}×` }))
+}
 
-function Bars({ n, title, rows, empty }: { n: number; title: string; rows: Row[]; empty: string }) {
+function Bars({ title, rows, empty }: { title: string; rows: Row[]; empty: string }) {
   const max = Math.max(1, ...rows.map((r) => r.count))
   return (
-    <section className="figure">
-      <Fig n={n}>{title}</Fig>
+    <section className="card">
+      <h2 className="hand">{title}</h2>
       {rows.length === 0 ? (
         <p className="empty">{empty}</p>
       ) : (
         <ol className="bars">
           {rows.map((r) => (
-            <li key={r.value}>
+            <li key={r.label}>
               <div className="bar-label">
-                <Glyph name={r.icon} size={20} />
-                <span>{labelFor(r.value)}</span>
-                <span className="bar-note">{r.note}</span>
+                <span>{r.label}</span>
+                <span className="muted">{r.note}</span>
               </div>
               <div className="bar-track">
                 <div className="bar-fill" style={{ width: `${(r.count / max) * 100}%` }} />
@@ -100,43 +129,24 @@ function Bars({ n, title, rows, empty }: { n: number; title: string; rows: Row[]
   )
 }
 
-function Ranked({ n, title, field, attacks }: { n: number; title: string; field: TagField; attacks: Attack[] }) {
-  const rows = topValues(attacks, field).map(([value, list]) => ({
-    value,
-    icon: presetFor(value)?.icon ?? 'question',
-    count: list.length,
-    note: `${list.length}× · ${Math.round((list.length / attacks.length) * 100)}%`,
-  }))
-  return <Bars n={n} title={title} rows={rows} empty="Nothing noted yet." />
-}
-
-function Medication({ n, attacks }: { n: number; attacks: Attack[] }) {
-  const rows = topValues(attacks, 'medications').map(([value, list]) => {
-    const rated = list.filter((a) => a.relief !== null)
-    const helped = rated.filter((a) => (a.relief ?? 0) >= 2).length
-    return { value, icon: 'pill', count: list.length, note: rated.length ? `helped ${helped}/${rated.length}` : `${list.length}×` }
-  })
-  return <Bars n={n} title="Medication taken" rows={rows} empty="No medication noted yet." />
-}
-
-/** When migraines start, in 3-hour bins. */
-function Onset({ n, attacks }: { n: number; attacks: Attack[] }) {
-  const bins = Array.from({ length: 8 }, () => 0)
-  for (const a of attacks) bins[Math.floor(new Date(a.started_at).getHours() / 3)]++
-  const max = Math.max(1, ...bins)
-  const peak = bins.indexOf(Math.max(...bins))
-  const hh = (h: number) => String(h).padStart(2, '0')
+/** When migraines start: four parts of the day. */
+function Onset({ attacks }: { attacks: Attack[] }) {
+  const parts = [
+    { label: 'morning', test: (h: number) => h >= 5 && h < 12 },
+    { label: 'afternoon', test: (h: number) => h >= 12 && h < 17 },
+    { label: 'evening', test: (h: number) => h >= 17 && h < 22 },
+    { label: 'night', test: (h: number) => h >= 22 || h < 5 },
+  ].map((p) => ({ ...p, n: attacks.filter((a) => p.test(new Date(a.started_at).getHours())).length }))
+  const max = Math.max(1, ...parts.map((p) => p.n))
   return (
-    <section className="figure">
-      <Fig n={n}>
-        Time of onset. Most often {hh(peak * 3)}:00–{hh(peak * 3 + 3)}:00
-      </Fig>
+    <section className="card">
+      <h2 className="hand">When they start</h2>
       <ol className="onset">
-        {bins.map((c, i) => (
-          <li key={i} aria-label={`${hh(i * 3)}:00 to ${hh(i * 3 + 3)}:00: ${c}`}>
-            <span className="onset-count">{c || ''}</span>
-            <span className="onset-bar" style={{ height: `${(c / max) * 72}%` }} />
-            <span className="onset-hour">{hh(i * 3)}</span>
+        {parts.map((p) => (
+          <li key={p.label} aria-label={`${p.label}: ${p.n}`}>
+            <span className="onset-n">{p.n || ''}</span>
+            <span className="onset-bar" style={{ height: `${(p.n / max) * 70}%` }} />
+            <span className="onset-label">{p.label}</span>
           </li>
         ))}
       </ol>

@@ -1,0 +1,8 @@
+# Cache rules for the host (Cloudflare Pages and Netlify both read this file).
+# The service worker must always be re-checked, or app updates get stuck behind an old one.
+/sw.js
+  Cache-Control: no-cache
+
+# Vite puts a content hash in these file names, so they can be cached forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

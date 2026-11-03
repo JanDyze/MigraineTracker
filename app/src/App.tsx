@@ -8,6 +8,7 @@ import { HomePage } from './pages/HomePage'
 import { LogPage } from './pages/LogPage'
 import { DiaryPage } from './pages/DiaryPage'
 import { PatternsPage } from './pages/PatternsPage'
+import { ChatPage } from './pages/ChatPage'
 import { SettingsPage } from './pages/SettingsPage'
 
 function Gate() {
@@ -27,6 +28,7 @@ function Gate() {
       <Routes>
         <Route path="/log" element={<LogPage />} />
         <Route path="/log/:id" element={<LogPage />} />
+        <Route path="/chat" element={<ChatPage />} />
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/diary" element={<DiaryPage />} />
