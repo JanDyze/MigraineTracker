@@ -1,0 +1,10 @@
+// Cloudflare Workers: serves the built app (dist/) as static files. Every unknown path gets
+// index.html so React Router can handle /diary, /log/:id and so on. Cache rules: public/_headers.
+{
+  "name": "might",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
