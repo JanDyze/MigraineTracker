@@ -7,7 +7,8 @@ if (!url || !key) {
   throw new Error('Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY. Copy .env.example to .env.local.')
 }
 
-export const supabase = createClient(url, key)
+// The Supabase project is shared by several apps; Might's tables live in their own schema.
+export const supabase = createClient(url, key, { db: { schema: 'might' } })
 
 /** Which OAuth providers are switched on in Supabase (so buttons only appear when they'll work). */
 export async function enabledProviders(): Promise<Record<string, boolean>> {
