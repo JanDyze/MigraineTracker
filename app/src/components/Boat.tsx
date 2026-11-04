@@ -33,9 +33,12 @@ const MOUTH = '#7a2f3a'
 // The head, as in Mighty screen 1: a round dome; on the side Grami faces, a smaller second curve
 // low down rounds out as the cheek before tucking into the boat. The back of the head stays a
 // smooth curve. No neck or chin: Grami is one soft mochi blob.
-const BODY =
+const OUTLINE =
   'M 35.5 74 C 32 64.5 31.8 52 34.6 41.5 C 40 19.5 56.8 6 80 6' +
-  'C 103.3 6 119.1 19 122.2 38.5 C 122.6 41 122.8 43 122.8 45 C 127 46.5 129.8 50 130.2 56 C 130.7 63 128.4 70 123.7 74Z'
+  'C 103.3 6 119.1 19 122.2 38.5 C 122.6 41 122.8 43 122.8 45 C 127 46.5 129.8 50 130.2 56 C 130.7 63 128.4 70 123.7 74'
+// the filled shape closes along the bottom, but that edge is never inked: his body carries on
+// down into the boat rather than ending in a line under the scarf
+const BODY = OUTLINE + 'Z'
 // the flag waves between these two shapes, streaming out to the right
 const FLAG_A = 'M109 -17C116 -21 124 -13 135 -17L130 -10.5L135 -4C124 -0.5 116 -8.5 109 -4.5Z'
 const FLAG_B = 'M109 -17C116 -13 125 -21 135 -15.5L130.5 -9.5L135 -3C125 -8 116 -0.5 109 -4.5Z'
@@ -268,10 +271,9 @@ export function Boat({ mood = 'calm', size = 120, water = true, scene = false, t
             <g transform={BOAT_TILT}>
               <path d="M24 57Q80 73 136 57L136 70Q80 86 24 70Z" style={{ fill: 'var(--scarf, #5ccbdc)' }} />
               <path d="M24 57Q80 73 136 57" fill="none" stroke={INK} strokeWidth="2.4" strokeLinecap="round" />
-              <path d="M28 63Q80 78.5 132 63" fill="none" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" opacity="0.45" />
-            </g>
+              <path d="M28 63Q80 78.5 132 63" fill="none" stroke="#ffffff" strokeWidth="1.6" strokeLinecap="round" opacity="0.45" />            </g>
           </g>
-          <path d={BODY} fill="none" {...bold} />
+          <path d={OUTLINE} fill="none" {...bold} />
 
           {/* rosy blush on the plumpest part of the cheeks */}
           <ellipse cx="62" cy="52.5" rx="8.5" ry="5.4" fill="#f59c9a" opacity="0.9" filter={url('blush')} />

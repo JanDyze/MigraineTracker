@@ -303,6 +303,25 @@ mark {
   border-radius: 31px;
   background: var(--surface);
   box-shadow: 0 8px 28px rgb(18 57 61 / 14%);
+  transition:
+    left 0.3s ease,
+    right 0.3s ease,
+    bottom 0.3s ease,
+    height 0.3s ease,
+    padding 0.3s ease,
+    border-radius 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+/* more page below: the bar docks flat along the bottom edge (it floats again at the end) */
+.nav.is-docked {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--nav-h) + var(--safe-b));
+  padding-bottom: var(--safe-b);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -4px 20px rgb(18 57 61 / 10%);
 }
 
 /* icon stacked over a small label so every name fits, even at 320px */
@@ -4068,6 +4087,7 @@ textarea {
   }
 
   .nav,
+  .nav.is-docked,
   .save-bar {
     left: 50%;
     right: auto;
