@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type FocusEvent, type FormEvent } from 'react'
 import { enabledProviders, supabase } from '../lib/supabase'
 import { Wordmark } from '../components/Logo'
 import { GramiBack } from '../components/GramiBack'
@@ -100,10 +100,17 @@ export function AuthPage() {
     setView('form')
   }
 
-  // the first field is ready to type in as soon as the sheet opens
+  // with a mouse, the first field is ready to type in as soon as the sheet opens; on phones we wait
+  // for a tap, so the keyboard doesn't jump up (and cover the form) before you've seen it
   useEffect(() => {
-    if (view === 'form') firstRef.current?.focus({ preventScroll: true })
+    if (view === 'form' && window.matchMedia('(pointer: fine)').matches) firstRef.current?.focus({ preventScroll: true })
   }, [view, mode])
+
+  // once the phone keyboard is up, keep the field being typed in above it
+  function keepInView(e: FocusEvent<HTMLFormElement>) {
+    const field = e.target
+    if (field instanceof HTMLInputElement) setTimeout(() => field.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350)
+  }
 
   return (
     <div className={`welcome td-evening td-dark is-${view}`}>
@@ -204,7 +211,7 @@ export function AuthPage() {
             </>
           )}
 
-          <form className="welcome-form" onSubmit={submit}>
+          <form className="welcome-form" onSubmit={submit} onFocus={keepInView}>
             {mode === 'signup' && (
               <label className="welcome-field">
                 <UserIcon />

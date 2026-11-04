@@ -3605,6 +3605,29 @@ textarea {
   height: 84px;
 }
 
+.welcome.is-form .welcome-stage,
+.welcome.is-form .qs {
+  transition:
+    flex-basis 0.35s ease,
+    height 0.35s ease;
+}
+
+/* typing on a phone: the band tucks away so the sheet rises above the keyboard, and the sheet gets
+   room below so the field you're in can scroll up into view */
+@media (pointer: coarse) {
+  .welcome.is-form:has(.welcome-form input:focus) .welcome-stage {
+    flex-basis: 24px;
+  }
+
+  .welcome.is-form:has(.welcome-form input:focus) .qs {
+    height: 56px;
+  }
+
+  .welcome.is-form:has(.welcome-form input:focus) .auth-sheet {
+    padding-bottom: 45vh;
+  }
+}
+
 .welcome.is-form .welcome-glint {
   top: 20px;
 }
