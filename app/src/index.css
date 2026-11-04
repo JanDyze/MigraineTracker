@@ -3017,15 +3017,48 @@ textarea {
   opacity: 0.45;
 }
 
-/* ---------- Journal ---------- */
+/* ---------- Journal: a little book, one month to a page ---------- */
 
-.month {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.jr-book {
+  position: relative;
+  margin-right: 6px;
+  perspective: 1800px;
+  /* sideways swipes turn the page; up and down still scroll */
+  touch-action: pan-y;
 }
 
-.month-head {
+/* a page: paper with the spine's shadow down the left and the rest of the book's pages peeking
+   out at the right and bottom edges */
+.jr-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: calc(100dvh - 260px - var(--safe-b));
+  padding: 20px 18px 24px 30px;
+  border-radius: 6px 22px 22px 6px;
+  background: var(--surface);
+  box-shadow:
+    3px 3px 0 -1px var(--surface),
+    3px 3px 0 0 var(--line),
+    6px 6px 0 -1px var(--surface),
+    6px 6px 0 0 var(--line),
+    0 14px 30px rgb(18 57 61 / 10%);
+}
+
+.jr-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 22px;
+  border-radius: 6px 0 0 6px;
+  background: linear-gradient(90deg, rgb(18 57 61 / 14%), rgb(18 57 61 / 4%) 55%, transparent);
+  pointer-events: none;
+}
+
+.jr-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -3033,8 +3066,113 @@ textarea {
   gap: 4px 12px;
 }
 
-.month-head .hand {
+.jr-head .hand {
   font-size: 2rem;
+}
+
+.jr-sea {
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--sea);
+}
+
+/* turning: the page swings on its spine (the left edge), darkening as it lifts away */
+.jr-turn-next,
+.jr-turn-back {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  left: 0;
+  transform-origin: left center;
+  backface-visibility: hidden;
+}
+
+.jr-turn-next {
+  animation: jr-away 0.55s cubic-bezier(0.45, 0.05, 0.4, 1) forwards;
+}
+
+.jr-turn-back {
+  animation: jr-in 0.55s cubic-bezier(0.45, 0.05, 0.4, 1) backwards;
+}
+
+.jr-turn-next::after,
+.jr-turn-back::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent 30%, rgb(18 57 61 / 28%));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.jr-turn-next::after {
+  animation: jr-shade 0.55s ease-in forwards;
+}
+
+.jr-turn-back::after {
+  animation: jr-shade 0.55s ease-out reverse backwards;
+}
+
+@keyframes jr-away {
+  to {
+    transform: rotateY(-100deg);
+  }
+}
+
+@keyframes jr-in {
+  from {
+    transform: rotateY(-100deg);
+  }
+}
+
+@keyframes jr-shade {
+  to {
+    opacity: 1;
+  }
+}
+
+/* ‹ Oct   page 4 of 12   Dec › */
+.jr-pager {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.jr-pager button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  --fill: transparent;
+}
+
+.jr-pager button:first-child {
+  justify-self: start;
+}
+
+.jr-pager button:last-child {
+  justify-self: end;
+}
+
+.jr-pager button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.jr-pager span {
+  font-size: 0.85rem;
+  color: var(--ink-2);
 }
 
 /* ---------- Patterns ---------- */

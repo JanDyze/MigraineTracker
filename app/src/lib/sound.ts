@@ -5,11 +5,12 @@
  *   send – a soft tick when you send a message
  *   save – a two-note chime when a finished entry is saved
  *   calm – a slow rising chime when a migraine is over
+ *   page – a soft paper rustle when a journal page turns
  * Migraines often come with sound sensitivity, so every sound is short and quiet, callers stay
  * silent while a migraine is ongoing, and the whole thing can be switched off in Settings.
  */
 
-export type Sound = 'tap' | 'pop' | 'send' | 'save' | 'calm'
+export type Sound = 'tap' | 'pop' | 'send' | 'save' | 'calm' | 'page'
 
 const KEY = 'might.sound'
 
@@ -46,6 +47,28 @@ function note(c: AudioContext, at: number, from: number, to: number, length: num
   osc.stop(at + length + 0.05)
 }
 
+/** A short, soft rustle of paper: a burst of noise through a filter that sweeps up, then fades. */
+function rustle(c: AudioContext, at: number) {
+  const length = 0.28
+  const buffer = c.createBuffer(1, Math.ceil(c.sampleRate * length), c.sampleRate)
+  const data = buffer.getChannelData(0)
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+  const src = c.createBufferSource()
+  src.buffer = buffer
+  const band = c.createBiquadFilter()
+  band.type = 'bandpass'
+  band.Q.value = 0.8
+  band.frequency.setValueAtTime(1200, at)
+  band.frequency.exponentialRampToValueAtTime(3800, at + length)
+  const gain = c.createGain()
+  gain.gain.setValueAtTime(0.0001, at)
+  gain.gain.exponentialRampToValueAtTime(0.05, at + 0.06)
+  gain.gain.exponentialRampToValueAtTime(0.0001, at + length)
+  src.connect(band).connect(gain).connect(c.destination)
+  src.start(at)
+  src.stop(at + length)
+}
+
 export function play(sound: Sound) {
   if (!getSoundOn()) return
   try {
@@ -68,6 +91,9 @@ export function play(sound: Sound) {
         break
       case 'calm': // C5, E5, G5, slowly
         ;[523, 659, 784].forEach((f, i) => note(ctx!, t + i * 0.14, f, f, 0.7, 0.045))
+        break
+      case 'page':
+        rustle(ctx, t)
         break
     }
   } catch {
