@@ -3471,28 +3471,84 @@ textarea {
   bottom: -50px;
 }
 
-/* the evening sea: purple layers */
-.welcome .qs {
+/* the evening sea: purple layers (in dark mode too) */
+:root .welcome .qs {
   --qs-far: #a596d6;
   --qs-mid: #7c71bf;
   --qs-near-top: #554f9f;
   z-index: 1;
 }
 
+/* Grami from behind, a backlit silhouette sailing away: he starts nearer (lower, bigger) and
+   glides up to the horizon in front of the sun, getting smaller as he goes */
 .welcome-grami {
   position: absolute;
-  z-index: 1;
+  z-index: 2;
   left: 50%;
-  bottom: 46px;
-  transform: translateX(-50%);
+  bottom: -36px;
+  filter: url(#welcome-silhouette);
+  transform: translateX(-50%) scale(0.7);
+  transform-origin: 50% 85%;
+  animation: welcome-sail 26s cubic-bezier(0.25, 0.6, 0.3, 1) forwards;
 }
 
 .welcome-grami svg {
   display: block;
 }
 
+/* the reflection: Grami upside down, soft and fading into the water */
+.welcome-reflect {
+  position: absolute;
+  left: 0;
+  top: calc(100% - 14px);
+  opacity: 0.4;
+  /* flip it about the waterline, then slide it down so it hangs below the hull */
+  transform: translateY(70%) scaleY(-0.7);
+  transform-origin: top;
+  mask-image: linear-gradient(0deg, #000, transparent 70%);
+  filter: blur(1px);
+}
+
 .welcome-grami .boat .boat-body {
-  animation: boat-bob 4.6s ease-in-out infinite;
+  animation: boat-bob 5s ease-in-out infinite;
+}
+
+@keyframes welcome-sail {
+  from {
+    transform: translateX(-50%) translateY(70px) scale(1.7);
+  }
+  40% {
+    transform: translateX(-46%) translateY(28px) scale(1.15);
+  }
+}
+
+.welcome-filter {
+  position: absolute;
+}
+
+/* the sun's light shimmering on the water below it */
+.welcome-glint {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 34px;
+  width: 150px;
+  height: 46px;
+  background: repeating-linear-gradient(180deg, rgb(255 236 200 / 55%) 0 2px, transparent 2px 9px);
+  mask-image: radial-gradient(ellipse 50% 50% at 50% 30%, #000 30%, transparent 100%);
+  transform: translateX(-50%);
+  animation: welcome-glint 3.5s ease-in-out infinite alternate;
+}
+
+@keyframes welcome-glint {
+  from {
+    opacity: 0.55;
+    transform: translateX(-50%) scaleX(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) scaleX(1.06);
+  }
 }
 
 /* below the waves: the buttons, or the sign-in card */
@@ -3519,12 +3575,108 @@ textarea {
   cursor: pointer;
 }
 
-.welcome-card {
+/* what Might is */
+.welcome-about {
+  margin-bottom: 4px;
+  text-align: center;
+  font-size: 1.05rem;
+  color: rgb(255 255 255 / 92%);
+}
+
+.welcome-about b {
+  font-family: var(--hand);
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+/* signing in: the sunset shrinks to a band at the top and a sheet rises underneath it */
+.welcome.is-form .welcome-stage {
+  flex: 0 0 120px;
+  min-height: 0;
+}
+
+.welcome.is-form .welcome-grami {
+  bottom: -30px;
+  transform: translateX(-50%) scale(0.5);
+  animation: none;
+}
+
+.welcome.is-form .qs {
+  height: 84px;
+}
+
+.welcome.is-form .welcome-glint {
+  top: 20px;
+}
+
+.auth-sheet {
+  --sh-bg: #fbf8f4;
+  --sh-ink: #2b2a63;
+  --sh-ink-2: #6e6b93;
+  --sh-field: #ffffff;
+  --sh-line: #e3ddec;
+  --sh-soft: #f0ebf6;
+  --sh-accent: #1f9e90;
+  --sh-ring: rgb(31 158 144 / 18%);
+  position: relative;
+  z-index: 3;
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  animation: lg-in 0.35s cubic-bezier(0.2, 0.9, 0.25, 1) backwards;
+  gap: 14px;
+  margin-top: -34px;
+  padding: 26px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  border-radius: 28px 28px 0 0;
+  background: var(--sh-bg);
+  color: var(--sh-ink);
+  box-shadow: 0 -10px 30px rgb(30 20 70 / 22%);
+  animation: auth-sheet-up 0.55s cubic-bezier(0.2, 0.9, 0.25, 1) backwards;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .auth-sheet {
+    --sh-bg: #1e1c47;
+    --sh-ink: #f2f0ff;
+    --sh-ink-2: #b4b0d8;
+    --sh-field: rgb(255 255 255 / 6%);
+    --sh-line: rgb(255 255 255 / 14%);
+    --sh-soft: rgb(255 255 255 / 8%);
+    --sh-accent: #8ee6da;
+    --sh-ring: rgb(111 214 200 / 22%);
+  }
+}
+
+:root[data-theme='dark'] .auth-sheet {
+  --sh-bg: #1e1c47;
+  --sh-ink: #f2f0ff;
+  --sh-ink-2: #b4b0d8;
+  --sh-field: rgb(255 255 255 / 6%);
+  --sh-line: rgb(255 255 255 / 14%);
+  --sh-soft: rgb(255 255 255 / 8%);
+  --sh-accent: #8ee6da;
+  --sh-ring: rgb(111 214 200 / 22%);
+}
+
+.auth-sheet > * {
+  animation: welcome-rise 0.5s 0.12s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.auth-head h1 {
+  font-family: var(--hand);
+  font-size: 2.3rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.auth-head p {
+  margin-top: 6px;
+  color: var(--sh-ink-2);
+}
+
+@keyframes auth-sheet-up {
+  from {
+    transform: translateY(60%);
+  }
 }
 
 .welcome-google {
@@ -3532,14 +3684,24 @@ textarea {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-height: 50px;
-  border: 0;
-  border-radius: 25px;
-  background: #ffffff;
-  color: #1f2a44;
+  min-height: 52px;
+  border: 1.5px solid var(--sh-line);
+  border-radius: 26px;
+  background: var(--sh-field);
+  color: var(--sh-ink);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.welcome-google:hover,
+.welcome-google:focus-visible {
+  border-color: var(--sh-accent);
+  box-shadow: 0 0 0 4px var(--sh-ring);
+  outline: none;
 }
 
 .welcome-or {
@@ -3547,7 +3709,7 @@ textarea {
   align-items: center;
   gap: 10px;
   font-size: 0.85rem;
-  color: var(--td-ink-2);
+  color: var(--sh-ink-2);
 }
 
 .welcome-or::before,
@@ -3555,30 +3717,294 @@ textarea {
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--glass-line);
+  background: var(--sh-line);
+}
+
+/* Sign in | Create account, with a pill that glides between them */
+.welcome-seg {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  border-radius: 22px;
+  background: var(--sh-soft);
+}
+
+.welcome-seg-pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 18px;
+  background: var(--sh-field);
+  box-shadow: 0 3px 10px rgb(40 30 90 / 14%);
+  transform: translateX(calc(var(--i) * 100%));
+  transition: transform 0.4s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+.welcome-seg button {
+  position: relative;
+  min-height: 40px;
+  border: 0;
+  background: none;
+  color: var(--sh-ink-2);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.welcome-seg button[aria-selected='true'] {
+  color: var(--sh-ink);
+  font-weight: 600;
 }
 
 .welcome-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
-.welcome .welcome-form input {
-  min-height: 50px;
-  border: 1px solid var(--glass-line);
-  border-radius: 25px;
-  background: rgb(255 255 255 / 12%);
-  color: var(--td-ink);
+/* a field: icon on the left, a label that floats up when you type, a soft teal focus ring */
+.welcome-field {
+  position: relative;
+  display: block;
+  border-radius: 18px;
+  transition: box-shadow 0.25s;
+  animation: welcome-rise 0.35s ease backwards;
 }
 
-.welcome .welcome-form input::placeholder {
-  color: var(--td-ink-2);
+.welcome-field > svg {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  color: var(--sh-ink-2);
+  transform: translateY(-50%);
+  transition: color 0.25s;
+  pointer-events: none;
 }
 
-.welcome .welcome-form input:focus {
-  border-color: #6fd6c8;
+.welcome .welcome-field input {
+  width: 100%;
+  min-height: 58px;
+  padding: 22px 48px 6px 48px;
+  border: 1.5px solid var(--sh-line);
+  border-radius: 18px;
+  background: var(--sh-field);
+  color: var(--sh-ink);
+  font-size: 16px;
+  transition: border-color 0.25s;
 }
+
+.welcome-field > span {
+  position: absolute;
+  left: 48px;
+  top: 50%;
+  color: var(--sh-ink-2);
+  transform: translateY(-50%);
+  transform-origin: left center;
+  transition:
+    transform 0.2s ease,
+    color 0.2s;
+  pointer-events: none;
+}
+
+.welcome .welcome-field input:focus {
+  border-color: var(--sh-accent);
+  outline: none;
+}
+
+.welcome-field:focus-within {
+  box-shadow: 0 0 0 4px var(--sh-ring);
+}
+
+.welcome-field:focus-within > svg,
+.welcome-field:focus-within > span {
+  color: var(--sh-accent);
+}
+
+.welcome-field input:focus + span,
+.welcome-field input:not(:placeholder-shown) + span {
+  transform: translateY(-115%) scale(0.78);
+}
+
+.welcome-eye {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--sh-ink-2);
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.welcome-eye:hover,
+.welcome-eye:focus-visible {
+  color: var(--sh-ink);
+}
+
+.welcome-hint {
+  display: flex;
+  gap: 6px;
+  margin: -4px 0 0 6px;
+  font-size: 0.85rem;
+  color: var(--sh-ink-2);
+  transition: color 0.25s;
+}
+
+.welcome-hint.is-ok {
+  color: var(--sh-accent);
+}
+
+.welcome-note {
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  animation: welcome-rise 0.3s ease backwards;
+}
+
+.welcome-note.is-error {
+  background: rgb(232 110 90 / 14%);
+  color: #b4412e;
+}
+
+.welcome-note.is-ok {
+  background: var(--sh-ring);
+  color: var(--sh-ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .welcome-note.is-error {
+    color: #ffc9bd;
+  }
+}
+
+:root[data-theme='dark'] .welcome-note.is-error {
+  color: #ffc9bd;
+}
+
+.welcome-submit {
+  margin-top: 4px;
+}
+
+.welcome-submit:disabled {
+  opacity: 0.85;
+}
+
+.welcome-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid rgb(14 43 51 / 25%);
+  border-top-color: #0e2b33;
+  border-radius: 50%;
+  animation: welcome-spin 0.8s linear infinite;
+}
+
+/* short phones: the welcome sky gives the words a little less room */
+@media (max-height: 700px) {
+  .welcome-hello {
+    margin-top: 2vh;
+  }
+
+  .welcome-hello h1 {
+    font-size: 2.5rem;
+  }
+
+  .welcome-sun {
+    width: 160px;
+    height: 160px;
+    bottom: -56px;
+  }
+
+  .welcome.is-form .welcome-stage {
+    flex-basis: 72px;
+  }
+}
+
+/* the welcome screen comes to life: words rise in one after another, the sun comes up from the
+   sea and glows, the heart beats softly */
+.welcome-hello > * {
+  animation: welcome-rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.welcome-hello > :nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.welcome-hello > :nth-child(3) {
+  animation:
+    welcome-rise 0.7s 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) backwards,
+    welcome-beat 2.4s 1s ease-in-out infinite;
+}
+
+.welcome-sun {
+  animation:
+    welcome-sunrise 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) backwards,
+    welcome-glow 6s 1.8s ease-in-out infinite alternate;
+  transition:
+    width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 0.6s cubic-bezier(0.2, 0.8, 0.2, 1),
+    bottom 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.welcome-panel > * {
+  animation: welcome-rise 0.6s 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.welcome-panel > :nth-child(2) {
+  animation-delay: 0.55s;
+}
+
+.welcome-panel > :nth-child(3) {
+  animation-delay: 0.65s;
+}
+
+@keyframes welcome-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@keyframes welcome-sunrise {
+  from {
+    opacity: 0.4;
+    transform: translateX(-50%) translateY(60px);
+  }
+}
+
+@keyframes welcome-glow {
+  to {
+    box-shadow: 0 0 110px 45px rgb(255 205 170 / 45%);
+  }
+}
+
+@keyframes welcome-beat {
+  0%,
+  60%,
+  100% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes welcome-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 
 
 .field {

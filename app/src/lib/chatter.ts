@@ -6,7 +6,7 @@ import type { Scene } from './scene'
  * at random, never the same one twice in a row.
  */
 
-type Context = { scene: Scene; streak: number | null; ongoing: boolean; recovering: boolean }
+type Context = { scene: Scene; streak: number | null; ongoing: boolean; recovering: boolean; name: string | null }
 
 const BY_SCENE: Record<Scene, string[]> = {
   morning: ['Good morning! Did you sleep okay?', 'Morning! A glass of water to start?', 'Rise and shine, captain!', 'Fresh start today. I’m on deck.'],
@@ -18,9 +18,10 @@ const BY_SCENE: Record<Scene, string[]> = {
 
 const ANYTIME = ['Tap me any time you want to talk.', 'Log it when it hurts, and I’ll look for patterns.', 'Proud of you for keeping track. ♡', 'Remember to breathe out slowly.']
 
-export function gramiLines({ scene, streak, ongoing, recovering }: Context): string[] {
-  if (ongoing) return BY_SCENE.storm
+export function gramiLines({ scene, streak, ongoing, recovering, name }: Context): string[] {
+  if (ongoing) return name ? [...BY_SCENE.storm, `I’m right here, ${name}.`] : BY_SCENE.storm
   const lines = [...BY_SCENE[scene], ...ANYTIME]
+  if (name) lines.push(`Ahoy, ${name}!`, `Hi ${name}! How’s your head today?`, `Glad you’re aboard, ${name}. ♡`)
   if (recovering) lines.push('Glad that one’s over. Go gently today.', 'Calm water again. Take it slow.')
   if (streak !== null && streak >= 3) lines.push(`${streak} calm days! Smooth sailing.`, `${streak} days without one. Look at us go!`)
   else if (streak === 1) lines.push('One calm day. Let’s make it two!')

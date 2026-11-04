@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAttacks } from '../lib/store'
+import { firstName, useAuth } from '../lib/auth'
 import { attackDuration, dayKey, formatDuration } from '../lib/format'
 import { attacksByDay, clearDays } from '../lib/days'
 import { Boat } from '../components/Boat'
@@ -49,6 +50,7 @@ function useDarkTheme() {
  */
 export function HomePage() {
   const { attacks, loading, error, save } = useAttacks()
+  const { session } = useAuth()
   const now = useNow()
   const dark = useDarkTheme()
   const [ending, setEnding] = useState(false)
@@ -90,7 +92,7 @@ export function HomePage() {
 
   // Grami chats now and then: a line shortly after Today opens, then every 20–40 s, each shown for
   // about 6 s (the effect below hides it). Tapping Grami says something new; the bubble opens the chat.
-  const lines = gramiLines({ scene, streak, ongoing: !!ongoing, recovering: !ongoing && streak === 0 })
+  const lines = gramiLines({ scene, streak, ongoing: !!ongoing, recovering: !ongoing && streak === 0, name: firstName(session) })
   const linesKey = lines.join('|')
   const [said, setSaid] = useState<{ text: string; n: number } | null>(null)
   const say = () => setSaid((prev) => ({ text: pickLine(lines, prev?.text ?? null), n: (prev?.n ?? 0) + 1 }))

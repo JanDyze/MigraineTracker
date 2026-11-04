@@ -19,3 +19,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export const useAuth = () => useContext(AuthContext)
+
+/** The name they gave at sign-up (or Google's), as written; '' if none. */
+export function fullName(session: Session | null): string {
+  const meta = session?.user.user_metadata
+  return String(meta?.full_name ?? meta?.name ?? '').trim()
+}
+
+/** Just the first name, for Grami to greet them by; null if we don't know it. */
+export const firstName = (session: Session | null) => fullName(session).split(/\s+/)[0] || null
