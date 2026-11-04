@@ -3,9 +3,9 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Glyph } from './Glyph'
 
 const tabs = [
-  { to: '/', label: 'Today', icon: 'wave' },
+  { to: '/', label: 'Today', icon: 'home' },
   { to: '/diary', label: 'Journal', icon: 'book' },
-  { to: '/patterns', label: 'Patterns', icon: 'patterns' },
+  { to: '/patterns', label: 'Patterns', icon: 'bars' },
 ]
 
 /** App shell: content above a floating pill nav whose highlight glides between tabs. */

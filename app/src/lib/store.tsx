@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from './supabase'
 import type { Attack, AttackInput } from './attacks'
+import { mock, mockAttacks } from './mock'
 
 type Store = {
   attacks: Attack[]
@@ -16,13 +17,17 @@ const StoreContext = createContext<Store | null>(null)
 
 const byNewest = (a: Attack, b: Attack) => b.started_at.localeCompare(a.started_at)
 
-/** Personal-scale data: load the user's whole history once and keep it in memory. */
+/**
+ * Personal-scale data: load the user's whole history once and keep it in memory.
+ * In mock mode (lib/mock.ts) the history is made up and saves stay in memory too.
+ */
 export function AttackStoreProvider({ children }: { children: ReactNode }) {
-  const [attacks, setAttacks] = useState<Attack[]>([])
-  const [loading, setLoading] = useState(true)
+  const [attacks, setAttacks] = useState<Attack[]>(() => (mock ? mockAttacks(mock) : []))
+  const [loading, setLoading] = useState(!mock)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (mock) return
     supabase
       .from('attacks')
       .select(COLUMNS)
@@ -36,6 +41,11 @@ export function AttackStoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const save = useCallback(async (input: AttackInput, id?: string) => {
+    if (mock) {
+      const saved: Attack = { ...input, id: id ?? crypto.randomUUID() }
+      setAttacks((prev) => [saved, ...prev.filter((a) => a.id !== saved.id)].sort(byNewest))
+      return saved
+    }
     const query = id
       ? supabase.from('attacks').update(input).eq('id', id)
       : supabase.from('attacks').insert(input)
@@ -47,6 +57,10 @@ export function AttackStoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const remove = useCallback(async (id: string) => {
+    if (mock) {
+      setAttacks((prev) => prev.filter((a) => a.id !== id))
+      return
+    }
     const { error } = await supabase.from('attacks').delete().eq('id', id)
     if (error) throw new Error(error.message)
     setAttacks((prev) => prev.filter((a) => a.id !== id))

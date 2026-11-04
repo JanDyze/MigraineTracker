@@ -1,21 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAttacks } from '../lib/store'
-import { levelLabel } from '../lib/attacks'
-import { attackDuration, formatDuration } from '../lib/format'
-import { clearDays } from '../lib/days'
-import { DiaryLine, Tile } from '../components/Journal'
-import { Wave } from '../components/Wave'
+import { attackDuration, dayKey, formatDuration } from '../lib/format'
+import { attacksByDay, clearDays } from '../lib/days'
 import { Boat } from '../components/Boat'
 import { Glyph } from '../components/Glyph'
-import { LogoMark, Wordmark } from '../components/Logo'
+import { Wordmark } from '../components/Logo'
+import { Sky, SeaBack, SeaFront } from '../components/Sky'
+import { play } from '../lib/sound'
+import { moodFor, type BoatMood } from '../lib/mood'
+import { gramiTip, medicineDays } from '../lib/tips'
+import { isDarkScene, sceneFor } from '../lib/scene'
 
 const DAY = 86_400_000
-const longDate = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
-const shortDate = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' })
-const hm = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
+const BAR_DAYS = 9
 
-/** Re-render every minute so "rough waters for 2 h 10 m" stays current. */
+/** Re-render every minute so "Severe · 2 h 10 m" and the sky stay current. */
 function useNow() {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -25,26 +25,49 @@ function useNow() {
   return now
 }
 
+/** Whether the app is showing its dark theme (chosen in Settings, or the phone's own setting). */
+function useDarkTheme() {
+  const read = () => {
+    const t = document.documentElement.dataset.theme
+    return t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches
+  }
+  const [dark, setDark] = useState(read)
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const update = () => setDark(read())
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+  return dark
+}
+
+/**
+ * Today, "week at a glance" (Mighty screen 3): this week's episodes, average pain and hours over
+ * a bar chart of recent days; Grami in the waves; one insight from your
+ * own journal; and the big log button. The sky behind follows the time of day.
+ */
 export function HomePage() {
   const { attacks, loading, error, save } = useAttacks()
   const now = useNow()
+  const dark = useDarkTheme()
   const [ending, setEnding] = useState(false)
+  const uid = useId().replace(/[^w-]/g, '')
 
+  const today = new Date(now)
+  const midnight = new Date(today)
+  midnight.setHours(0, 0, 0, 0)
   const ongoing = attacks.find((a) => !a.ended_at)
-  const from = new Date(now - 13 * DAY)
-  from.setHours(0, 0, 0, 0)
-  const monthStart = new Date(now)
-  monthStart.setDate(1)
-  monthStart.setHours(0, 0, 0, 0)
-  const thisMonth = attacks.filter((a) => new Date(a.started_at) >= monthStart).length
-  const lengths = attacks
-    .filter((a) => a.ended_at)
-    .slice(0, 20)
-    .map((a) => attackDuration(a.started_at, a.ended_at))
-    .sort((a, b) => a - b)
-  const usual = lengths.length ? formatDuration(lengths[Math.floor(lengths.length / 2)]) : '–'
   const streak = clearDays(attacks)
-  const lastEnd = attacks.find((a) => a.ended_at)?.ended_at
+  const scene = sceneFor(today, !!ongoing, dark)
+  const darkScene = isDarkScene(scene)
+
+  // the tab bar takes on the scene's light or dark look while Today is showing
+  useEffect(() => {
+    document.documentElement.dataset.scene = darkScene ? 'dark' : 'light'
+    return () => {
+      delete document.documentElement.dataset.scene
+    }
+  }, [darkScene])
 
   // Ends every open entry (normally one, but a double-logged migraine shouldn't get stuck).
   async function endOngoing() {
@@ -54,105 +77,145 @@ export function HomePage() {
     const endedAt = new Date().toISOString()
     try {
       await Promise.all(open.map(({ id, ...rest }) => save({ ...rest, ended_at: endedAt }, id)))
+      play('calm')
     } finally {
       setEnding(false)
     }
   }
 
-  let headline = 'Calm waters'
-  let sub = 'Nothing logged yet. Tap below when a migraine hits.'
-  if (ongoing) {
-    headline = 'Rough waters'
-    sub = `${levelLabel(ongoing.intensity)}, for ${formatDuration(attackDuration(ongoing.started_at, null, now))}. Grami's here with you.`
-  } else if (streak === 0 && lastEnd) {
-    headline = 'Calm again'
-    sub = `since ${hm.format(new Date(lastEnd))}. Take it easy today.`
-  } else if (streak !== null) {
-    headline = `${streak} calm ${streak === 1 ? 'day' : 'days'}`
-    sub = streak >= 3 ? 'in a row. Smooth sailing.' : 'in a row. Nice.'
-  }
+  // eyes open and smiling, except in the late-night sky, when Grami is resting
+  const lateNight = scene === 'night' && (today.getHours() >= 22 || today.getHours() < 6)
+  const mood: BoatMood = ongoing ? moodFor(ongoing.intensity) : streak === 0 ? 'recovering' : lateNight ? 'calm' : 'happy'
+
+  // this week: the last 7 days, today included
+  const week = attacks.filter((a) => new Date(a.started_at).getTime() >= midnight.getTime() - 6 * DAY)
+  const weekPain = week.length ? (week.reduce((s, a) => s + a.intensity, 0) / week.length).toFixed(1) : '–'
+  const weekHours = week.reduce((s, a) => s + attackDuration(a.started_at, a.ended_at, now), 0)
+  const meds = medicineDays(attacks, today)
+
+  // one rounded bar per day, taller for a worse migraine; calm days stay low, today is lit
+  const byDay = attacksByDay(attacks)
+  const bars = Array.from({ length: BAR_DAYS }, (_, i) => {
+    const d = new Date(midnight)
+    d.setDate(d.getDate() - (BAR_DAYS - 1 - i))
+    const list = byDay.get(dayKey(d)) ?? []
+    const worst = list.length ? Math.max(...list.map((a) => a.intensity)) : 0
+    return { key: dayKey(d), d, worst, today: i === BAR_DAYS - 1 }
+  })
 
   return (
-    <div className="page">
-      <header className="topbar">
+    <div className={`td td-${scene} ${darkScene ? 'td-dark' : 'td-light'}`}>
+      <Sky scene={scene} />
+
+      <header className="topbar td-top">
         <div className="brand">
-          <LogoMark size={30} tile={false} />
           <Wordmark />
         </div>
-        <Link to="/settings" className="icon-btn" aria-label="Settings">
-          <Glyph name="settings" size={22} />
+        <Link to="/settings" className="td-top-icon" aria-label="Settings">
+          <Glyph name="settings" size={24} />
         </Link>
       </header>
+      <h1 className="sr-only">Today</h1>
 
       {error && <p className="notice">Couldn't load your journal: {error}</p>}
 
-      <section className="hello" aria-live="polite">
-        <span className="hand-date">{longDate.format(now)}</span>
-        <h1 className="headline">
-          <mark key={loading ? 'loading' : headline}>{loading ? ' ' : headline}</mark>
-        </h1>
-        <p className="sub">{loading ? ' ' : sub}</p>
-      </section>
-
-      <section className="card sea-card">
-        <div className="card-head">
-          <h2>Last two weeks</h2>
-          {/* Grami floats in the corner of the tide; tap to chat */}
-          <Link to="/chat" className="grami" aria-label="Ask Grami about your migraines">
-            <span className="grami-hint" aria-hidden="true">
-              ask me!
-            </span>
-            <Boat mood={ongoing ? 'hurt' : 'calm'} size={120} />
-          </Link>
-        </div>
-        <Wave attacks={attacks} from={from} days={14} label="Your last two weeks" />
-        <div className="tide-ticks" aria-hidden="true">
-          <span>{shortDate.format(from)}</span>
-          <span>{shortDate.format(new Date(from.getTime() + 7 * DAY))}</span>
-          <span>today</span>
-        </div>
-      </section>
-
-      {ongoing ? (
-        <div className="btn-row">
-          <button className="btn btn-deep" onClick={endOngoing} disabled={ending}>
-            {ending ? 'Saving…' : 'It’s over'}
-          </button>
-          <Link to={`/log/${ongoing.id}`} className="btn btn-soft">
-            Update
-          </Link>
-        </div>
-      ) : (
-        <Link to="/log" className="btn btn-deep btn-big">
-          <span className="btn-plus">
-            <Glyph name="plus" size={18} />
+      <Link to="/patterns" className="glass td-weekstats" aria-label="This week. Open Patterns">
+        <b className="td-ws-title">This Week</b>
+        <div className="td-nums">
+          <span>
+            <b>{week.length}</b>
+            <small>{week.length === 1 ? 'Episode' : 'Episodes'}</small>
           </span>
-          I have a migraine
-        </Link>
-      )}
-
-      <section className="tiles">
-        <Tile value={thisMonth} label="this month" />
-        <Tile value={usual} label="usual length" />
-      </section>
-
-      <section className="card">
-        <div className="card-head">
-          <h2>Recent</h2>
-          {attacks.length > 3 && <Link to="/diary">see journal</Link>}
+          <span>
+            <small>Avg Pain</small>
+            <b>
+              {weekPain}
+              <i>/10</i>
+            </b>
+          </span>
+          <span>
+            <small>Total Hours</small>
+            <b>{week.length ? formatDuration(weekHours) : '0h'}</b>
+          </span>
         </div>
-        {loading ? (
-          <p className="muted">Loading…</p>
-        ) : attacks.length === 0 ? (
-          <p className="empty">Your journal is empty. Hopefully it stays that way!</p>
-        ) : (
-          <div className="diary">
-            {attacks.slice(0, 3).map((a) => (
-              <DiaryLine key={a.id} attack={a} />
-            ))}
-          </div>
+        {/* bars rise out of a little sea: soft gradients, a wave along the bottom, today glowing */}
+        <svg viewBox="0 0 284 96" className="td-bars" aria-hidden="true">
+          <defs>
+            <linearGradient id={`${uid}-bar`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" className="td-bar-top" />
+              <stop offset="1" className="td-bar-bottom" />
+            </linearGradient>
+            <linearGradient id={`${uid}-now`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#9ff3e6" />
+              <stop offset="1" stopColor="#3fb6a8" stopOpacity="0.35" />
+            </linearGradient>
+            <filter id={`${uid}-glow`} x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="2.5" />
+            </filter>
+          </defs>
+          {bars.map((b, i) => {
+            const h = b.worst ? 30 + b.worst * 5.4 : 16 + ((i * 7) % 12)
+            const x = 6 + i * 31
+            return (
+              <g key={b.key}>
+                <rect x={x} y={86 - h} width="22" height={h + 10} rx="11" fill={`url(#${uid}-${b.today ? 'now' : 'bar'})`} className={b.worst || b.today ? undefined : 'td-bar-calm'} />
+                {b.today && (
+                  <>
+                    <circle cx={x + 11} cy={86 - h + 9} r="7" fill="#fff6c9" opacity="0.8" filter={`url(#${uid}-glow)`} />
+                    <circle cx={x + 11} cy={86 - h + 9} r="3.4" fill="#ffe7a0" />
+                  </>
+                )}
+              </g>
+            )
+          })}
+          <path className="td-bars-wave-back" d="M0 78C24 70 44 70 70 77S118 86 142 78S190 69 214 77S262 86 284 78V96H0Z" />
+          <path className="td-bars-wave" d="M0 84C22 79 46 79 70 84S116 90 142 84S188 78 212 84S260 90 284 84V96H0Z" />
+        </svg>
+      </Link>
+
+      {/* Grami floats in the waves; tap to chat */}
+      <div className="td-stage">
+        {scene === 'evening' && <span className="td-setting-sun" aria-hidden="true" />}
+        {scene === 'morning' && <span className="td-rising-sun" aria-hidden="true" />}
+        <SeaBack rough={!!ongoing} />
+        <Link to="/chat" className="td-grami" aria-label="Ask Grami about your migraines" onClick={() => !ongoing && play('tap')}>
+          <Boat mood={mood} size={210} water={false} />
+        </Link>
+        <SeaFront rough={!!ongoing} />
+      </div>
+
+      <div className="td-sea">
+        {!loading && (
+          <Link to="/chat" className="glass td-insight">
+            <Glyph name="bulb" size={30} />
+            <span>
+              <b>Insight</b>
+              <small>{gramiTip(attacks, today)}</small>
+            </span>
+            <Glyph name="right" size={18} className="td-chevron" />
+          </Link>
         )}
-      </section>
+        {meds >= 8 && (
+          <p className="td-note">
+            Pain medicine on {meds} days this month. Doctors keep an eye on 10 or more, when painkillers can start causing headaches themselves.
+          </p>
+        )}
+
+        {ongoing ? (
+          <div className="td-btn-row">
+            <button className="td-btn" onClick={endOngoing} disabled={ending}>
+              {ending ? 'Saving…' : 'It’s over'}
+            </button>
+            <Link to={`/log/${ongoing.id}`} className="td-btn td-btn-glass">
+              Update
+            </Link>
+          </div>
+        ) : (
+          <Link to="/log" className="td-btn">
+            Log Migraine
+          </Link>
+        )}
+      </div>
     </div>
   )
 }

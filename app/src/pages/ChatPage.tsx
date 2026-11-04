@@ -5,6 +5,7 @@ import { SUGGESTIONS, answer } from '../lib/insights'
 import { Boat } from '../components/Boat'
 import { Glyph } from '../components/Glyph'
 import { useLeave } from '../lib/motion'
+import { play } from '../lib/sound'
 
 type Msg = { from: 'grami' | 'me'; text: string }
 
@@ -34,12 +35,16 @@ export function ChatPage() {
   function ask(q: string) {
     const text = q.trim()
     if (!text || thinking) return
+    // quiet while a migraine is on
+    const hush = attacks.some((a) => !a.ended_at)
+    if (!hush) play('send')
     setMsgs((m) => [...m, { from: 'me', text }])
     setDraft('')
     setThinking(true)
     // a short pause so it feels like Grami is thinking, not a lookup table
     setTimeout(() => {
       setMsgs((m) => [...m, { from: 'grami', text: answer(text, attacks) }])
+      if (!hush) play('pop')
       setThinking(false)
     }, 650)
   }
@@ -56,7 +61,7 @@ export function ChatPage() {
       <div className="sheet">
         <div className="sheet-handle" />
         <header className="chat-head">
-          <Boat mood={thinking ? 'talk' : 'calm'} size={96} title="Grami in its paper boat" />
+          <Boat mood={thinking ? 'thinking' : 'happy'} size={96} title="Grami in its paper boat" />
           <div className="chat-title">
             <h1>Grami</h1>
             <span className="muted">knows your journal</span>

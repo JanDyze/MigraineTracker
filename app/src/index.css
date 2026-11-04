@@ -19,6 +19,18 @@
   --sand-ink: #5c5246;
   --mark: #ffe8a3; /* highlighter */
   --line: #d5e3e0;
+  --tide-bg: #e0f3f7; /* Today's two-week wave, in Grami's sea colours */
+  --tide-fill: #b6e2eb;
+  --tide-line: #2a95b8;
+  --sky-1: #a9e0f2; /* Grami's sky: a glow that fades into the page */
+  --sky-2: #d3eff8;
+  --sky-3: #e9f8fc;
+  --storm-1: #9aa8bf;
+  --storm-2: #c4cddb;
+  --storm-3: #d6dee9;
+  --cloud: #ffffff;
+  --storm-cloud: #eef1f6;
+  --page-glow: none;
   --backdrop: #c9dbd8; /* behind sheets */
   --danger: #b3261e;
   --tile: #ffffff; /* logo tile */
@@ -58,6 +70,18 @@
     --sand-ink: #cbbfae;
     --mark: rgb(255 214 102 / 28%);
     --line: #23393c;
+    --tide-bg: #15303a;
+    --tide-fill: #1e4c5a;
+    --tide-line: #5cc6d9;
+    --sky-1: #24557a; /* Grami's night sky */
+    --sky-2: #173a55;
+    --sky-3: #0f1a1c;
+    --storm-1: #3a4559;
+    --storm-2: #252e3d;
+    --storm-3: #0f1a1c;
+    --cloud: #2e4d6b;
+    --storm-cloud: #3d4a5e;
+    --page-glow: radial-gradient(130% 55% at 50% 0%, #15323f 0%, transparent 70%);
     --backdrop: #0a1214;
     --danger: #ff8a80;
     --tile: #16252a;
@@ -86,6 +110,18 @@
   --sand-ink: #cbbfae;
   --mark: rgb(255 214 102 / 28%);
   --line: #23393c;
+  --tide-bg: #15303a;
+  --tide-fill: #1e4c5a;
+  --tide-line: #5cc6d9;
+  --sky-1: #24557a; /* Grami's night sky */
+  --sky-2: #173a55;
+  --sky-3: #0f1a1c;
+  --storm-1: #3a4559;
+  --storm-2: #252e3d;
+  --storm-3: #0f1a1c;
+  --cloud: #2e4d6b;
+  --storm-cloud: #3d4a5e;
+  --page-glow: radial-gradient(130% 55% at 50% 0%, #15323f 0%, transparent 70%);
   --backdrop: #0a1214;
   --danger: #ff8a80;
   --tile: #16252a;
@@ -104,7 +140,7 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--page-glow) no-repeat fixed, var(--bg);
   color: var(--ink);
   -webkit-tap-highlight-color: transparent;
 }
@@ -144,9 +180,8 @@ button {
 
 .hand,
 .hand-title,
-.hand-date,
 .headline,
-.wordmark {
+.wordmark-text {
   font-family: var(--hand);
 }
 
@@ -160,12 +195,6 @@ button {
   flex: 1;
   font-size: 2.5rem;
   font-weight: 700;
-  line-height: 1;
-}
-
-.hand-date {
-  font-size: 1.4rem;
-  color: var(--ink-2);
   line-height: 1;
 }
 
@@ -276,15 +305,18 @@ mark {
   box-shadow: 0 8px 28px rgb(18 57 61 / 14%);
 }
 
+/* icon stacked over a small label so every name fits, even at 320px */
 .nav-tab {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 1px;
   height: 46px;
   margin: 0 2px;
   border-radius: 23px;
-  font-size: 0.88rem;
+  font-size: 0.72rem;
+  line-height: 1.1;
   color: var(--ink-2);
   --fill: transparent;
 }
@@ -293,11 +325,44 @@ mark {
   position: relative;
   z-index: 1;
   transition: color 0.25s;
+  --paper: #ffffff;
+  --fold: #d6e6f1;
 }
 
+/* the selected tab, on every page: a teal pill, a teal icon and label, its paper tinted mint */
 .nav-tab.active {
-  color: var(--ink);
-  font-weight: 500;
+  color: var(--teal);
+  font-weight: 600;
+  --paper: #e9fbf7;
+  --fold: #a6e6dc;
+}
+
+/* the icon hops when its tab is chosen, and squishes a little when pressed */
+.nav-tab.active svg {
+  animation: tab-hop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.nav-tab:active svg {
+  transform: scale(0.88);
+}
+
+.nav-tab svg {
+  transition: transform 0.15s;
+}
+
+@keyframes tab-hop {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  35% {
+    transform: translateY(-5px) scale(1.12) rotate(-6deg);
+  }
+  70% {
+    transform: translateY(1px) scale(0.97) rotate(3deg);
+  }
+  100% {
+    transform: none;
+  }
 }
 
 /* the highlight pill glides to whichever tab is active (--i set on .nav) */
@@ -308,22 +373,38 @@ mark {
   width: calc((100% - 20px) / 3);
   height: 46px;
   border-radius: 23px;
-  background: var(--sea);
+  background: color-mix(in srgb, var(--teal) 16%, transparent);
   transform: translateX(calc(var(--i) * 100%));
   transition: transform 0.45s cubic-bezier(0.34, 1.3, 0.64, 1);
 }
 
 /* ---------- Brand ---------- */
 
+/* the wordmark is a small drawing sized in em: its baseline lines up with the text around it */
 .wordmark {
+  display: inline-block;
+  width: auto;
+  height: 1.15em;
   font-size: 1.9rem;
+  vertical-align: -0.35em;
+  overflow: visible;
+}
+
+.wordmark-text {
+  font-size: 100px;
   font-weight: 700;
-  line-height: 1;
-  color: var(--ink);
+  fill: var(--ink);
 }
 
 .wordmark .accent {
-  color: var(--coral);
+  fill: var(--coral);
+}
+
+/* the underline draws itself in once, after the page settles */
+.wordmark-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: logo-draw 0.7s cubic-bezier(0.33, 1, 0.68, 1) 0.35s forwards;
 }
 
 .splash {
@@ -444,7 +525,7 @@ mark {
   animation-duration: 1.8s;
 }
 
-.boat-hurt .boat-body {
+.boat-rock .boat-body {
   animation: boat-rock 1.7s ease-in-out infinite;
 }
 
@@ -464,27 +545,23 @@ mark {
   animation: boat-sweat 1.7s ease-in infinite;
 }
 
-.boat-spray {
-  animation: boat-spray 1.7s ease-out infinite;
-}
-
 /* the sea strip slides exactly one wavelength, then loops seamlessly */
 .boat-sea {
   animation: boat-drift 5s linear infinite;
 }
 
-.boat-hurt .boat-sea {
+.boat-rough .boat-sea {
   animation: boat-chop 1.1s linear infinite;
 }
 
 /* the far swell rolls slower, so the two layers drift past each other */
 .boat-sea-back,
-.boat-hurt .boat-sea-back {
+.boat-rough .boat-sea-back {
   animation-duration: 8s;
   animation-delay: -2s;
 }
 
-.boat-hurt .boat-sea-back {
+.boat-rough .boat-sea-back {
   animation-duration: 1.9s;
 }
 
@@ -495,6 +572,107 @@ mark {
 
 .boat-talk .boat-buddy {
   animation: boat-hop 0.9s ease-in-out infinite;
+}
+
+/* Today's scene: the front swell rolls a little slower than the near one, clouds and birds drift,
+   sparkles twinkle, and rain falls while a migraine is on */
+.boat-sea-deep {
+  animation-duration: 6.5s;
+}
+
+.boat-rough .boat-sea-deep {
+  animation-duration: 1.5s;
+}
+
+.boat-cloud {
+  animation: boat-cloud 14s ease-in-out infinite alternate;
+}
+
+.boat-cloud-2 {
+  animation-duration: 18s;
+  animation-direction: alternate-reverse;
+}
+
+.boat-birds {
+  animation: boat-birds 7s ease-in-out infinite alternate;
+}
+
+.boat-sparkle {
+  transform-box: fill-box;
+  transform-origin: right bottom;
+  animation: boat-sparkle 2.4s ease-in-out infinite;
+}
+
+.boat-rain {
+  animation: boat-rain 0.8s linear infinite;
+}
+
+@keyframes boat-cloud {
+  to {
+    transform: translateX(8px);
+  }
+}
+
+@keyframes boat-birds {
+  to {
+    transform: translate(10px, -4px);
+  }
+}
+
+@keyframes boat-sparkle {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.75);
+    opacity: 0.6;
+  }
+}
+
+@keyframes boat-rain {
+  from {
+    transform: translate(2px, -6px);
+  }
+  to {
+    transform: translate(-2px, 6px);
+  }
+}
+
+/* night scene: the moon and stars come out in dark mode, and the birds go to sleep */
+.boat-night {
+  display: none;
+}
+
+.boat-twinkle circle {
+  animation: boat-think 3.2s ease-in-out infinite;
+}
+
+.boat-twinkle circle:nth-child(2n) {
+  animation-delay: 1.1s;
+}
+
+.boat-twinkle circle:nth-child(3n) {
+  animation-delay: 2s;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .boat-night {
+    display: inline;
+  }
+
+  :root:not([data-theme='light']) .boat-birds {
+    display: none;
+  }
+}
+
+:root[data-theme='dark'] .boat-night {
+  display: inline;
+}
+
+:root[data-theme='dark'] .boat-birds {
+  display: none;
 }
 
 /* every so often Grami looks left, then right, then back at you */
@@ -535,20 +713,58 @@ mark {
   }
 }
 
-.boat-flag {
-  transform-box: view-box;
-  transform-origin: 104px -4px;
-  animation: boat-flutter 1.4s ease-in-out infinite alternate;
-}
-
-.boat-hurt .boat-flag {
-  animation-duration: 0.5s;
-}
-
-.boat-scribble {
+.boat-zap {
   transform-box: fill-box;
   transform-origin: center;
   animation: boat-throb 1.2s ease-in-out infinite;
+}
+
+/* mood marks: notes, bubbles and squiggles drift up; "…" blinks in turn; tears drip; the storm hovers */
+.boat-float {
+  animation: boat-float 3s ease-in-out infinite;
+}
+
+.boat-think circle {
+  animation: boat-think 1.2s ease-in-out infinite;
+}
+
+.boat-think circle:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.boat-think circle:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.boat-tears {
+  animation: boat-sweat 1.6s ease-in infinite;
+}
+
+.boat-storm {
+  animation: boat-float 2.4s ease-in-out infinite;
+}
+
+@keyframes boat-float {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-3px);
+    opacity: 0.75;
+  }
+}
+
+@keyframes boat-think {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+  }
+  30% {
+    opacity: 1;
+  }
 }
 
 @keyframes boat-flutter {
@@ -617,21 +833,6 @@ mark {
   }
   100% {
     transform: translateY(9px);
-    opacity: 0;
-  }
-}
-
-@keyframes boat-spray {
-  0%,
-  40% {
-    transform: translateY(6px);
-    opacity: 0;
-  }
-  60% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-4px);
     opacity: 0;
   }
 }
@@ -763,36 +964,559 @@ mark {
 
 /* ---------- Today ---------- */
 
-.hello {
+/* A living scene behind everything: the sky follows the time of day, the sea fills the lower
+   half, and Grami floats on the horizon. Each scene sets its colours; light scenes get navy text
+   and white frosted cards, dark ones light text and smoky cards. */
+.td-morning {
+  --sky-top: #a39fdf;
+  --sky-bottom: #f5cdd5;
+  --sea-top: #9c9fdd;
+  --sea-bottom: #4c58a3;
+}
+
+.td-day {
+  --sky-top: #8ccdec;
+  --sky-bottom: #e4f5fb;
+  --sea-top: #74c8db;
+  --sea-bottom: #2a84a4;
+}
+
+.td-evening {
+  --sky-top: #5a55a6;
+  --sky-bottom: #f2aab3;
+  --sea-top: #7b70b8;
+  --sea-bottom: #2a2b62;
+}
+
+.td-night {
+  --sky-top: #0c1e2d;
+  --sky-bottom: #1d3e55;
+  --sea-top: #2d6b81;
+  --sea-bottom: #0c2332;
+}
+
+.td-storm {
+  --sky-top: #222b3a;
+  --sky-bottom: #46546b;
+  --sea-top: #3d5d74;
+  --sea-bottom: #132232;
+}
+
+.td-light {
+  --td-ink: #14304a;
+  --td-ink-2: #3f5b71;
+  --glass: rgb(255 255 255 / 55%);
+  --glass-line: rgb(255 255 255 / 70%);
+  --chip: rgb(255 255 255 / 45%);
+}
+
+.td-dark {
+  --td-ink: #eef6f8;
+  --td-ink-2: #b6c8d3;
+  --glass: rgb(8 22 36 / 45%);
+  --glass-line: rgb(255 255 255 / 10%);
+  --chip: rgb(255 255 255 / 7%);
+}
+
+/* the whole screen, edge to edge and down behind the tab bar */
+.td {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  min-height: 100dvh;
+  margin: 0 -20px calc(-1 * (var(--nav-h) + 42px + var(--safe-b)));
+  padding: 0 20px;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--sky-top), var(--sky-bottom) 62%);
+  color: var(--td-ink);
 }
 
-.grami {
-  position: relative;
-  display: block;
-  flex: none;
-  margin: -30px -10px -14px 0;
-}
-
-.grami-hint {
+.td-sky {
   position: absolute;
-  left: -38px;
-  top: 6px;
-  font-family: var(--hand);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--teal);
-  transform: rotate(-8deg);
+  inset: 0 0 auto;
+  width: 100%;
+  height: 62%;
+  pointer-events: none;
+}
+
+.td-top {
+  position: relative;
+  padding-top: 14px;
+}
+
+.td .td-icon {
+  background: var(--glass);
+  color: var(--td-ink);
+  backdrop-filter: blur(10px);
+}
+
+.td-dark .wordmark-text {
+  fill: var(--td-ink);
+}
+
+/* the settings button, plain like the sheet's */
+.td-top-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--td-ink);
+  --fill: transparent;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 
-.tide-ticks {
+/* the stage between the chart and the sea: Grami sits at its bottom, on the waterline */
+.td-stage {
+  position: relative;
+  flex: 1;
+  min-height: 200px;
   display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--ink-2);
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.td-grami {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-bottom: 14px;
+}
+
+/* Grami is the centrepiece: about half the screen wide */
+.td-grami svg {
+  display: block;
+  width: clamp(170px, 52vw, 210px);
+  height: auto;
+}
+
+/* the low sun behind Grami at sunset, and the rising sun off to the side in the morning */
+.td-setting-sun,
+.td-rising-sun {
+  position: absolute;
+  bottom: -60px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.td-setting-sun {
+  left: 50%;
+  width: 190px;
+  height: 190px;
+  margin-left: -95px;
+  background: radial-gradient(circle, #fff1c9 0 55%, rgb(255 225 170 / 0%) 72%);
+  opacity: 0.85;
+}
+
+.td-rising-sun {
+  right: 4%;
+  bottom: 10px;
+  width: 64px;
+  height: 64px;
+  background: #fff3cf;
+  box-shadow: 0 0 0 14px rgb(255 243 207 / 35%), 0 0 0 30px rgb(255 243 207 / 15%);
+}
+
+/* the sea: everything below the waterline, cards floating on it */
+.td-sea {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 -20px;
+  padding: 6px 20px calc(var(--nav-h) + 38px + var(--safe-b));
+  background: linear-gradient(180deg, var(--sea-top), var(--sea-bottom) 75%);
+}
+
+/* the sea around Grami: two swells behind the boat and one washing over its front; each strip
+   is twice as wide as it shows and rolls one width, at its own speed */
+.td-seaback,
+.td-seafront {
+  position: absolute;
+  left: -20px;
+  right: -20px;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.td-seaback {
+  z-index: 0;
+  height: 96px;
+}
+
+.td-seaback svg {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 200%;
+  height: 100%;
+}
+
+.td-seafront {
+  z-index: 2;
+  width: calc(200% + 80px);
+  height: 46px;
+  right: auto;
+}
+
+.td-roll {
+  animation: td-roll 12s linear infinite;
+}
+
+.td-roll-slow {
+  animation-duration: 20s;
+}
+
+.td-roll-fast {
+  animation-duration: 8s;
+}
+
+.td-storm .td-roll {
+  animation-duration: 4s;
+}
+
+.td-storm .td-roll-slow {
+  animation-duration: 6s;
+}
+
+.td-swell-far {
+  fill: color-mix(in srgb, var(--sea-top) 55%, #ffffff);
+  opacity: 0.75;
+}
+
+.td-swell-mid {
+  fill: color-mix(in srgb, var(--sea-top) 78%, #ffffff);
+}
+
+.td-swell-near {
+  fill: var(--sea-top);
+}
+
+.td-swell-crest,
+.td-swell-foam {
+  fill: none;
+  stroke: rgb(255 255 255 / 55%);
+  stroke-width: 2;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.td-swell-foam {
+  stroke: rgb(255 255 255 / 75%);
+  stroke-width: 2.4;
+}
+
+@keyframes td-roll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* frosted cards */
+.glass {
+  position: relative;
+  border: 1px solid var(--glass-line);
+  border-radius: 22px;
+  background: var(--glass);
+  color: var(--td-ink);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* this week: episodes, average pain and hours over a bar chart of recent days */
+.td-weekstats {
+  display: block;
+  margin-top: 14px;
+  padding: 14px 16px 10px;
+  overflow: hidden;
+}
+
+.td-ws-title {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.td-nums {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.td-nums span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--glass-line);
+}
+
+.td-nums span:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.td-nums small {
+  font-size: 0.78rem;
+  color: var(--td-ink-2);
+}
+
+.td-nums b {
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.td-nums i {
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--td-ink-2);
+}
+
+.td-bars {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 10px 0 -14px;
+}
+
+.td-bar-top {
+  stop-color: #5aaecb;
+}
+
+.td-bar-bottom {
+  stop-color: #2b6a86;
+  stop-opacity: 0.25;
+}
+
+.td-light .td-bar-top {
+  stop-color: #63b4cf;
+}
+
+.td-light .td-bar-bottom {
+  stop-color: #9fd3e2;
+  stop-opacity: 0.35;
+}
+
+/* calm days stay low and faint */
+.td-bar-calm {
+  opacity: 0.45;
+}
+
+.td-bars-wave-back {
+  fill: rgb(255 255 255 / 5%);
+}
+
+.td-bars-wave {
+  fill: rgb(10 30 45 / 55%);
+}
+
+.td-light .td-bars-wave-back {
+  fill: rgb(255 255 255 / 35%);
+}
+
+.td-light .td-bars-wave {
+  fill: rgb(255 255 255 / 55%);
+}
+
+.td-note {
+  padding: 0 6px;
+  font-size: 0.8rem;
+  color: var(--td-ink-2);
+}
+
+/* the big soft-teal button */
+.td-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 26px;
+  background: #6fd6c8;
+  color: #0e2b33;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  box-shadow: 0 8px 22px rgb(10 40 50 / 18%);
+  cursor: pointer;
+  --fill: transparent;
+}
+
+.td-btn:active {
+  transform: scale(0.98);
+}
+
+.td-btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.td-btn-glass {
+  border: 1px solid var(--glass-line);
+  background: var(--glass);
+  color: var(--td-ink);
+  box-shadow: none;
+  backdrop-filter: blur(14px);
+}
+
+/* Grami's insight: one line from your own journal; tap to chat */
+.td-insight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 14px;
+  --fill: #ffe39a;
+}
+
+.td-insight > svg:first-child {
+  flex: none;
+  color: #e0a92e;
+}
+
+.td-insight span {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.td-insight b {
+  font-weight: 600;
+}
+
+.td-insight small {
+  font-size: 0.86rem;
+  line-height: 1.35;
+  color: var(--td-ink-2);
+}
+
+/* the sky's details: twinkling stars, drifting clouds, falling rain */
+.td-stars circle {
+  fill: #ffffff;
+  animation: boat-think 3.4s ease-in-out infinite;
+}
+
+.td-stars circle:nth-child(2n) {
+  animation-delay: 1.2s;
+}
+
+.td-stars circle:nth-child(3n) {
+  animation-delay: 2.1s;
+}
+
+.td-stars-faint {
+  opacity: 0.6;
+}
+
+.td-shooting {
+  fill: none;
+  stroke: rgb(255 255 255 / 70%);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+.td-moon {
+  fill: #f3e3a6;
+}
+
+.td-sun {
+  fill: #fde9a6;
+}
+
+.td-sun-glow {
+  fill: #fff6d8;
+  opacity: 0.25;
+}
+
+.td-cloud {
+  fill: #ffffff;
+  opacity: 0.85;
+}
+
+.td-night .td-cloud {
+  fill: #284b62;
+}
+
+.td-cloud-warm {
+  fill: #fbe0e4;
+}
+
+.td-cloud-storm {
+  fill: #566479;
+  opacity: 0.95;
+}
+
+.td-birds {
+  fill: none;
+  stroke: var(--td-ink-2);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.td-rain {
+  fill: none;
+  stroke: rgb(190 210 230 / 45%);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  animation: boat-rain 0.9s linear infinite;
+}
+
+.td-drift {
+  animation: boat-cloud 16s ease-in-out infinite alternate;
+}
+
+.td-drift-slow {
+  animation: boat-cloud 22s ease-in-out infinite alternate-reverse;
+}
+
+/* short phones: Grami and the chart shrink a little so Today still fits */
+@media (max-height: 740px) {
+  .td-stage {
+    min-height: 120px;
+  }
+
+  .td-grami svg {
+    width: 150px;
+  }
+}
+
+/* the tab bar takes on the scene's look while Today is showing: no pill, the active tab is teal */
+/* the tab bar takes on the scene's look while Today is showing */
+[data-scene='dark'] .nav {
+  background: rgb(10 24 36 / 78%);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 30%);
+  backdrop-filter: blur(14px);
+}
+
+[data-scene='dark'] .nav-tab {
+  color: #a9bdca;
+}
+
+[data-scene='dark'] .nav-tab.active {
+  color: #5fd3c4;
+}
+
+[data-scene='dark'] .nav-glide {
+  background: rgb(95 211 196 / 16%);
+}
+
+[data-scene='light'] .nav {
+  background: rgb(255 255 255 / 82%);
+  backdrop-filter: blur(14px);
 }
 
 .wave {
@@ -953,6 +1677,675 @@ mark {
 
 .diary-go {
   color: var(--ink-2);
+}
+
+/* ---------- Log a migraine ---------- */
+
+/* After Mighty screen 6: a calm cream page (navy at night), a big question, a row of faces from
+   mild to worst, soft pill chips, a teal Save Entry button, and Grami sailing by at the bottom. */
+.lg {
+  --lg-bg: #f7f2ea;
+  --lg-ink: #1b3a57;
+  --lg-ink-2: #5b6f80;
+  --lg-chip: #e9e4ef;
+  --lg-chip-on: #b7ebe2;
+  --lg-card: rgb(255 255 255 / 70%);
+  position: relative;
+  min-height: 100dvh;
+  overflow-x: clip; /* clip, not hidden, so the Save button can stay stuck to the bottom */
+  background: var(--lg-bg);
+  color: var(--lg-ink);
+  animation: fade-in 0.3s backwards;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .lg {
+    --lg-bg: #0f1d2a;
+    --lg-ink: #e8f1f5;
+    --lg-ink-2: #a7bccb;
+    --lg-chip: #1d3242;
+    --lg-chip-on: #1f5c58;
+    --lg-card: rgb(255 255 255 / 6%);
+  }
+}
+
+:root[data-theme='dark'] .lg {
+  --lg-bg: #0f1d2a;
+  --lg-ink: #e8f1f5;
+  --lg-ink-2: #a7bccb;
+  --lg-chip: #1d3242;
+  --lg-chip-on: #1f5c58;
+  --lg-card: rgb(255 255 255 / 6%);
+}
+
+.lg.leaving {
+  animation: fade-out 0.22s ease-in both;
+}
+
+.lg .wordmark-text {
+  fill: var(--lg-ink);
+}
+
+.lg-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--lg-ink-2);
+}
+
+.lg-form {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: calc(100dvh - 140px);
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 20px 0;
+}
+
+/* story-style progress bars, one per question */
+.lg-progress {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.lg-progress button {
+  height: 5px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: var(--lg-chip);
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+/* a taller tap area than the bar itself */
+.lg-progress button {
+  background-clip: content-box;
+  height: 21px;
+  padding: 8px 0;
+}
+
+.lg-progress .is-done {
+  background-color: #3fb6a8;
+}
+
+.lg-count {
+  font-size: 0.9rem;
+  color: var(--lg-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.lg-save-now,
+.lg-top-spacer {
+  min-width: 88px;
+}
+
+.lg-save-now {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--lg-chip);
+  color: var(--lg-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* one question: it slides in from the right */
+.lg-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  padding-top: 12px;
+  animation: lg-in 0.35s cubic-bezier(0.2, 0.9, 0.25, 1) backwards;
+}
+
+.lg-step h1 {
+  font-size: 1.9rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.lg-ask-sub {
+  margin-top: -8px;
+  text-align: center;
+  color: var(--lg-ink-2);
+}
+
+.lg-ask-sub b {
+  color: var(--lg-ink);
+  font-weight: 600;
+}
+
+.lg-step .lg-chips {
+  justify-content: center;
+}
+
+@keyframes lg-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+
+.lg-nav {
+  display: flex;
+  gap: 10px;
+}
+
+.lg-nav .lg-save-btn {
+  flex: 1;
+}
+
+.lg-back {
+  min-height: 58px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 29px;
+  background: var(--lg-chip);
+  color: var(--lg-ink);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.lg-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+}
+
+.lg-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--lg-ink);
+  cursor: pointer;
+}
+
+.lg-ask {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  text-align: center;
+}
+
+.lg-ask h1 {
+  max-width: 14ch;
+  font-size: 1.9rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.lg-ask p {
+  color: var(--lg-ink-2);
+}
+
+.lg-ask b {
+  color: var(--lg-ink);
+  font-weight: 600;
+}
+
+/* ten faces in a frosted strip; the chosen one lifts, gets a teal ring and a filled number */
+.lg-faces {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 2px;
+  margin: 0 -8px;
+  padding: 10px 6px 8px;
+  border-radius: 22px;
+  background: var(--lg-card);
+}
+
+.lg-face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--lg-ink-2);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.lg-face svg {
+  width: 100%;
+  max-width: 34px;
+  height: auto;
+  border-radius: 50%;
+  transition: transform 0.2s cubic-bezier(0.34, 1.5, 0.64, 1);
+}
+
+.lg-face span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-variant-numeric: tabular-nums;
+}
+
+.lg-face[aria-checked='true'] svg {
+  transform: translateY(-3px) scale(1.12);
+  box-shadow: 0 0 0 2.5px var(--lg-bg), 0 0 0 4.5px #3fb6a8;
+}
+
+.lg-face[aria-checked='true'] span {
+  background: #3fb6a8;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.lg-part {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lg-part h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* soft pill chips */
+.lg-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 21px;
+  background: var(--lg-chip);
+  color: var(--lg-ink);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  --fill: transparent;
+  transition:
+    background 0.2s,
+    transform 0.15s;
+}
+
+.lg-chip svg {
+  margin-left: -4px;
+}
+
+.lg-chip[aria-pressed='true'] {
+  background: var(--lg-chip-on);
+  font-weight: 500;
+  --fill: rgb(255 255 255 / 55%);
+}
+
+.lg-chip:active {
+  transform: scale(0.96);
+}
+
+.lg-chip-more {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--lg-chip);
+  color: var(--lg-ink-2);
+}
+
+.lg-chip-input {
+  width: 11em;
+  max-width: 100%;
+  outline: 0;
+  box-shadow: inset 0 0 0 1.5px #3fb6a8;
+  cursor: text;
+}
+
+.lg-relief {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.lg-relief > span {
+  color: var(--lg-ink-2);
+  font-size: 0.92rem;
+}
+
+.lg-when,
+.lg-notes {
+  border-radius: 20px;
+  background: var(--lg-card);
+}
+
+.lg-when {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 16px;
+}
+
+.lg-when-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+}
+
+.lg-when-row + .lg-when-row {
+  border-top: 1px solid var(--lg-chip);
+}
+
+/* .lg in front so these beat the app's general input style */
+.lg .lg-when-row input[type='datetime-local'] {
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 6px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--lg-ink);
+  text-align: right;
+}
+
+.lg-when-row > span {
+  flex: none;
+}
+
+.lg .lg-notes {
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  background: var(--lg-card);
+  color: var(--lg-ink);
+  font: inherit;
+  resize: vertical;
+}
+
+.lg-delete {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--danger);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* the date and time picker: the moment in words, shortcuts, a row of days, and the time */
+.lg-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 22px;
+  background: var(--lg-card);
+}
+
+.lg-pick-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lg-pick-head span {
+  color: var(--lg-ink-2);
+  font-size: 0.92rem;
+}
+
+.lg-pick-head b {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.lg-quick .lg-chip {
+  min-height: 36px;
+  padding: 0 13px;
+  font-size: 0.88rem;
+}
+
+.lg-step .lg-quick {
+  justify-content: flex-start;
+}
+
+.lg-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.lg-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  padding: 7px 0 6px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--lg-chip);
+  color: var(--lg-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.lg-day small {
+  font-size: 0.68rem;
+  color: var(--lg-ink-2);
+}
+
+.lg-day b {
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lg-day[aria-checked='true'] {
+  background: #3fb6a8;
+  color: #ffffff;
+}
+
+.lg-day[aria-checked='true'] small {
+  color: rgb(255 255 255 / 85%);
+}
+
+.lg-day:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.lg-time-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lg-nudge {
+  flex: none;
+  width: 56px;
+  height: 52px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--lg-chip);
+  color: var(--lg-ink);
+  font: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+/* the big time; the phone's own time wheel sits invisibly on top of it */
+.lg-time {
+  position: relative;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  height: 52px;
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 1.5px #3fb6a8;
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.lg .lg-time input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.lg-still {
+  padding: 0 14px;
+  border-radius: 18px;
+  background: var(--lg-card);
+}
+
+.lg-lasted {
+  margin-top: -6px;
+  text-align: center;
+  color: var(--lg-ink-2);
+}
+
+/* the save button stays in reach while you scroll */
+.lg-save {
+  position: sticky;
+  z-index: 5;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 -20px;
+  padding: 18px 20px calc(14px + var(--safe-b));
+  background: linear-gradient(180deg, transparent, var(--lg-bg) 40%);
+}
+
+.lg-save-btn {
+  min-height: 58px;
+  border: 0;
+  border-radius: 29px;
+  background: #6fd6c8;
+  color: #0e2b33;
+  font: inherit;
+  font-size: 1.12rem;
+  font-weight: 600;
+  box-shadow: 0 8px 22px rgb(10 40 50 / 16%);
+  cursor: pointer;
+}
+
+.lg-save-btn:active {
+  transform: scale(0.98);
+}
+
+/* the quiet sea along the bottom (after Mighty screen 6): three soft layers drifting slowly */
+.qs {
+  --qs-far: #bfe1ec;
+  --qs-mid: #7fbfd7;
+  --qs-near-top: #4a98bd;
+  --qs-near-bottom: #2b6f98;
+  position: relative;
+  height: 140px;
+  overflow: hidden;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .qs {
+    --qs-far: #1d3d52;
+    --qs-mid: #285a73;
+    --qs-near-top: #2f6f8f;
+    --qs-near-bottom: #173d57;
+  }
+}
+
+:root[data-theme='dark'] .qs {
+  --qs-far: #1d3d52;
+  --qs-mid: #285a73;
+  --qs-near-top: #2f6f8f;
+  --qs-near-bottom: #173d57;
+}
+
+.qs-layer {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 200%;
+  height: 140px;
+  animation: td-roll 26s linear infinite;
+}
+
+.qs-front {
+  z-index: 2;
+  animation-duration: 18s;
+}
+
+.qs-far {
+  fill: var(--qs-far);
+}
+
+.qs-mid {
+  fill: var(--qs-mid);
+}
+
+.qs-near {
+  fill: var(--qs-near-top);
+}
+
+.qs-foam {
+  fill: none;
+  stroke: rgb(255 255 255 / 45%);
+  stroke-width: 1.6;
+  vector-effect: non-scaling-stroke;
+}
+
+
+/* Grami floats between the layers, hull tucked into the front wave */
+.lg-grami {
+  position: absolute;
+  z-index: 1;
+  right: 12%;
+  bottom: 50px;
+}
+
+.lg-grami svg {
+  display: block;
+}
+
+/* on this page Grami only bobs gently, however rough the day: no rocking, no fast chatter */
+.lg-grami .boat .boat-body {
+  animation: boat-bob 4.6s ease-in-out infinite;
 }
 
 /* ---------- Sheets (log + chat) ---------- */
@@ -1626,6 +3019,218 @@ textarea {
   font-weight: 700;
 }
 
+/* ---------- Mock mode ---------- */
+
+/* a small badge so a made-up journal is never mistaken for the real one */
+.mock-badge {
+  position: fixed;
+  z-index: 30;
+  top: calc(6px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  margin: 0;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: var(--mark);
+  color: var(--ink);
+  font-size: 0.68rem;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.mock-badge a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* ---------- Patterns ---------- */
+
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chart-sub {
+  margin-top: -6px;
+  font-size: 0.9rem;
+}
+
+/* readout: tapping or hovering a mark writes its exact value here */
+.readout {
+  min-height: 1.4em;
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 2px;
+  height: 150px;
+  margin: 18px 0 20px;
+  border-bottom: 1.5px solid var(--line);
+}
+
+.trend-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--chronic);
+  border-top: 1.5px dashed var(--coral);
+  pointer-events: none;
+}
+
+.trend-line span {
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  font-size: 0.72rem;
+  color: var(--ink-2);
+}
+
+.trend-col {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.trend-bar {
+  width: 72%;
+  max-width: 20px;
+  border-radius: 4px 4px 0 0;
+  background: var(--teal);
+}
+
+.trend-bar.is-partial {
+  opacity: 0.5;
+}
+
+.trend-col:hover .trend-bar,
+.trend-col:focus-visible .trend-bar {
+  background: var(--deep);
+}
+
+.trend-label {
+  position: absolute;
+  top: calc(100% + 4px);
+  font-size: 0.72rem;
+  color: var(--ink-2);
+}
+
+.heat-months,
+.heat {
+  display: grid;
+  grid-template-columns: 12px repeat(20, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.heat-months {
+  margin-bottom: -6px;
+  font-size: 0.68rem;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.heat {
+  grid-template-rows: repeat(7, auto);
+  grid-auto-flow: column;
+}
+
+/* :where keeps this at zero specificity so the .lvl-N colours win */
+:where(.heat > span) {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: var(--sea);
+}
+
+.heat .is-future {
+  background: transparent;
+}
+
+.heat .heat-wd {
+  aspect-ratio: auto;
+  align-self: center;
+  background: none;
+  font-size: 0.64rem;
+  line-height: 1;
+  color: var(--ink-2);
+}
+
+.heat-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  font-size: 0.75rem;
+  color: var(--ink-2);
+}
+
+.heat-legend span {
+  margin: 0 3px;
+}
+
+:where(.heat-legend i) {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: var(--sea);
+}
+
+.onset-7 {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  height: 130px;
+}
+
+.onset-7 .onset-label {
+  font-size: 1.05rem;
+}
+
+.where-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  --hit: var(--coral);
+  --fill: var(--sea);
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.summary dt {
+  color: var(--ink-2);
+}
+
+.summary dd {
+  min-width: 0;
+  margin: 0;
+  font-weight: 500;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
 /* ---------- Settings & auth ---------- */
 
 .about {
@@ -1903,7 +3508,8 @@ textarea {
   }
 
   .logo-anim .logo-swell,
-  .logo-anim .logo-calm {
+  .logo-anim .logo-calm,
+  .wordmark-line {
     stroke-dashoffset: 0;
   }
 }

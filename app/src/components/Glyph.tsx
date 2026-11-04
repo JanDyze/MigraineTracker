@@ -3,6 +3,8 @@ import type { ReactNode } from 'react'
 /*
  * Might's own icon set. Every glyph is drawn on a 32×32 grid with one chunky round stroke
  * (currentColor) over an optional pastel "sticker" fill (var(--fill), set by the parent).
+ * The main ones (today, journal, patterns, settings, insight, chat, medicine) are "folded paper":
+ * white paper with pale-blue folds (var(--paper) / var(--fold)), like Grami's boat.
  * <F> marks the fill layer; plain paths are the ink line.
  */
 
@@ -65,12 +67,41 @@ const GLYPHS: Record<string, ReactNode> = {
       <Dot x={5} y={24} r={2} />
     </>
   ),
+  bars: (
+    <>
+      {/* folded paper bars, each with a shaded side */}
+      <path d="M5 27V17l3-1.5 3 1.5v10zM13 27V11l3-1.5 3 1.5v16zM21 27V6l3-1.5 3 1.5v21z" fill="var(--paper, #ffffff)" stroke="none" />
+      <path d="M8 15.5 11 17v10H8zM16 9.5l3 1.5v16h-3zM24 4.5 27 6v21h-3z" fill="var(--fold, #d6e6f1)" stroke="none" />
+      <path d="M5 27V17l3-1.5 3 1.5v10zM13 27V11l3-1.5 3 1.5v16zM21 27V6l3-1.5 3 1.5v21z" />
+      <path d="M8 15.5V27M16 9.5V27M24 4.5V27" strokeWidth="1.2" />
+    </>
+  ),
+  home: (
+    <>
+      {/* folded paper boat */}
+      <path d="M16 4.5 24 17H16z" fill="var(--fold, #d6e6f1)" stroke="none" />
+      <path d="M16 4.5 9 17h7z" fill="var(--paper, #ffffff)" stroke="none" />
+      <path d="M16 4.5 24 17H9z" />
+      <path d="M4 18.5 16 21l12-2.5-4 7H8z" fill="var(--paper, #ffffff)" />
+      <path d="M16 21v4.5" strokeWidth="1.4" />
+    </>
+  ),
   plus: <path d="M16 7v18M7 16h18" strokeWidth="3" />,
+  flame: (
+    <>
+      <F d="M16 4c1 5 7 7 7 14a7 7 0 0 1-14 0c0-4 2-6 4-8 0 3 1 4 3 5-1-4 0-8 0-11Z" />
+      <path d="M16 4c1 5 7 7 7 14a7 7 0 0 1-14 0c0-4 2-6 4-8 0 3 1 4 3 5-1-4 0-8 0-11Z" />
+    </>
+  ),
   settings: (
     <>
-      <path d="M5 10h22M5 22h22" />
-      <circle cx="12" cy="10" r="3.2" fill="var(--surface)" />
-      <circle cx="20" cy="22" r="3.2" fill="var(--surface)" />
+      {/* a paper pinwheel */}
+      <path d="M16 16 16 3 24 11z" fill="var(--fold, #d6e6f1)" stroke="none" />
+      <path d="M16 16 29 16 21 24z" fill="var(--paper, #ffffff)" stroke="none" />
+      <path d="M16 16 16 29 8 21z" fill="var(--fold, #d6e6f1)" stroke="none" />
+      <path d="M16 16 3 16 11 8z" fill="var(--paper, #ffffff)" stroke="none" />
+      <path d="M16 16V3l8 8zM16 16h13l-8 8zM16 16v13l-8-8zM16 16H3l8-8z" />
+      <circle cx="16" cy="16" r="1.8" fill="#f08b75" stroke="none" />
     </>
   ),
   back: <path d="M19 6l-10 10 10 10" strokeWidth="2.6" />,
@@ -91,11 +122,13 @@ const GLYPHS: Record<string, ReactNode> = {
     </>
   ),
   pill: (
-    <g transform="rotate(-38 16 16)">
-      <path d="M9 11h7v10H9a5 5 0 0 1 0-10Z" fill="var(--fill, transparent)" stroke="none" />
-      <rect x="4" y="11" width="24" height="10" rx="5" />
-      <path d="M16 11v10" />
-    </g>
+    <>
+      {/* a capsule, half coral, half paper */}
+      <path d="M9.6 22.4a5 5 0 0 1 0-7l2.9-2.9 7 7-2.9 2.9a5 5 0 0 1-7 0z" fill="#f08b75" stroke="none" />
+      <path d="M12.5 12.5l2.9-2.9a5 5 0 0 1 7 7l-2.9 2.9z" fill="var(--paper, #ffffff)" stroke="none" />
+      <path d="M15.4 9.6l7 7" strokeWidth="1.2" opacity="0.4" />
+      <path d="M9.6 22.4a5 5 0 0 1 0-7l5.8-5.8a5 5 0 0 1 7 7l-5.8 5.8a5 5 0 0 1-7 0zM12.5 12.5l7 7" />
+    </>
   ),
   clock: (
     <>
@@ -109,14 +142,18 @@ const GLYPHS: Record<string, ReactNode> = {
   wave: <path d="M3 19c3.2-5 6.3-5 9.5 0s6.3 5 9.5 0 4.2-3.5 7-3.5" />,
   book: (
     <>
-      <F d="M5 7h8a3 3 0 0 1 3 3v16a2.5 2.5 0 0 0-2.5-2.5H5Z" />
-      <path d="M5 7h8a3 3 0 0 1 3 3v16a2.5 2.5 0 0 0-2.5-2.5H5ZM27 7h-8a3 3 0 0 0-3 3v16a2.5 2.5 0 0 1 2.5-2.5H27Z" />
+      {/* a notebook folded open: lit page, shaded page */}
+      <path d="M16 7 6 4.5v20L16 27z" fill="var(--paper, #ffffff)" stroke="none" />
+      <path d="M16 7l10-2.5v20L16 27z" fill="var(--fold, #d6e6f1)" stroke="none" />
+      <path d="M16 7 6 4.5v20L16 27l10-2.5v-20zM16 7v20" />
     </>
   ),
   chat: (
     <>
-      <F d="M7 7h18a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H14l-6 5v-5H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3Z" />
-      <path d="M7 7h18a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H14l-6 5v-5H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3Z" />
+      {/* a folded note to Grami */}
+      <path d="M5 7h22v13H15l-6 5.5V20H5z" fill="var(--paper, #ffffff)" stroke="none" />
+      <path d="M5 7l11 7 11-7z" fill="var(--fold, #d6e6f1)" stroke="none" />
+      <path d="M5 7h22v13H15l-6 5.5V20H5zM5 7l11 7 11-7" />
     </>
   ),
   send: <path d="M5 15.5L27 6l-8.5 21-4-8.5ZM14.5 18.5L27 6" />,
@@ -161,8 +198,9 @@ const GLYPHS: Record<string, ReactNode> = {
   ),
   bulb: (
     <>
-      <path d="M11.5 20c-2.3-1.7-4-4.2-4-7.5a8.5 8.5 0 0 1 17 0c0 3.3-1.7 5.8-4 7.5v2.5h-9Z" fill="var(--fill, transparent)" />
-      <path d="M12.5 26.5h7M14 16l2 2 2-2" />
+      {/* a folded paper star, for an insight */}
+      <path d="M16 3.5 19.5 12 28 12.6 21.4 18.2 23.6 27 16 22.2 8.4 27 10.6 18.2 4 12.6 12.5 12z" fill="#f2c94c" />
+      <path d="M16 3.5V22.2M16 22.2 28 12.6M16 22.2 4 12.6" strokeWidth="1.1" opacity="0.5" />
     </>
   ),
   weather: (

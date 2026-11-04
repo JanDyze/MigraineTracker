@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import { useAttacks } from '../lib/store'
 import { RELIEF, levelLabel, type Attack } from '../lib/attacks'
 import { applyTheme, getThemePref, type ThemePref } from '../lib/theme'
+import { getSoundOn, play, setSoundOn } from '../lib/sound'
 import { Glyph } from '../components/Glyph'
 import { Wordmark } from '../components/Logo'
 
@@ -41,10 +42,17 @@ export function SettingsPage() {
   const { attacks } = useAttacks()
   const navigate = useNavigate()
   const [theme, setTheme] = useState<ThemePref>(getThemePref)
+  const [sound, setSound] = useState(getSoundOn)
 
   function chooseTheme(t: ThemePref) {
     setTheme(t)
     applyTheme(t)
+  }
+
+  function chooseSound(on: boolean) {
+    setSound(on)
+    setSoundOn(on)
+    if (on) play('pop')
   }
 
   function exportCsv() {
@@ -72,6 +80,18 @@ export function SettingsPage() {
           {THEMES.map((t) => (
             <button key={t.value} type="button" role="radio" aria-checked={theme === t.value} onClick={() => chooseTheme(t.value)}>
               {t.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card stack">
+        <h2 className="hand">Sounds</h2>
+        <p className="muted">Soft little sounds for taps and saves. Always silent during a migraine.</p>
+        <div className="pills" role="radiogroup" aria-label="Sounds">
+          {[true, false].map((on) => (
+            <button key={String(on)} type="button" role="radio" aria-checked={sound === on} onClick={() => chooseSound(on)}>
+              {on ? 'On' : 'Off'}
             </button>
           ))}
         </div>

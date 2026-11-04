@@ -52,11 +52,29 @@ export function LogoMark({ size = 32, tile = true, animate }: LogoProps) {
   )
 }
 
-/** Wordmark: "mi" and "t" are highlighted for MIgraine Tracker. */
+/**
+ * Wordmark: the logo's double swell is the "m", and its calm line runs on from the m's last
+ * stroke as the underline. "i" and "t" stay highlighted for MIgraine Tracker. Sized in em
+ * (.wordmark in index.css), so it follows the font size wherever it's used.
+ */
 export function Wordmark() {
+  const id = 'wm' + useId().replace(/[^a-zA-Z0-9_-]/g, '')
+  const line = { fill: 'none', stroke: `url(#${id})`, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
   return (
-    <span className="wordmark" aria-label="Might">
-      <span className="accent">mi</span>gh<span className="accent">t</span>
-    </span>
+    <svg className="wordmark" viewBox="0 22 252 112" role="img" aria-label="Might">
+      <defs>
+        <linearGradient id={id} gradientUnits="userSpaceOnUse" x1="6" y1="0" x2="150" y2="0">
+          <stop offset="0.3" style={{ stopColor: 'var(--coral)' }} />
+          <stop offset="1" style={{ stopColor: 'var(--teal)' }} />
+        </linearGradient>
+      </defs>
+      {/* the calm line: leaves the m's foot and dips under the rest of the word */}
+      <path className="wordmark-line" pathLength={1} d="M110.6 100C121 100 120 115 134 115H244" {...line} strokeWidth={8} />
+      {/* the logo's swell, scaled so its foot sits on the text baseline (y = 100) */}
+      <path d={SWELL} transform="translate(6 100) scale(0.218) translate(-168 -622)" {...line} strokeWidth={42} />
+      <text x="116" y="100" className="wordmark-text">
+        <tspan className="accent">i</tspan>gh<tspan className="accent">t</tspan>
+      </text>
+    </svg>
   )
 }
