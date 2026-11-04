@@ -10,6 +10,7 @@ import { Sky, SeaBack, SeaFront } from '../components/Sky'
 import { play } from '../lib/sound'
 import { moodFor, type BoatMood } from '../lib/mood'
 import { gramiTip, medicineDays } from '../lib/tips'
+import { gramiLines, pickLine } from '../lib/chatter'
 import { isDarkScene, sceneFor } from '../lib/scene'
 
 const DAY = 86_400_000
@@ -85,7 +86,35 @@ export function HomePage() {
 
   // eyes open and smiling, except in the late-night sky, when Grami is resting
   const lateNight = scene === 'night' && (today.getHours() >= 22 || today.getHours() < 6)
-  const mood: BoatMood = ongoing ? moodFor(ongoing.intensity) : streak === 0 ? 'recovering' : lateNight ? 'calm' : 'happy'
+  const restingMood: BoatMood = ongoing ? moodFor(ongoing.intensity) : streak === 0 ? 'recovering' : lateNight ? 'calm' : 'happy'
+
+  // Grami chats now and then: a line shortly after Today opens, then every 20–40 s, each shown for
+  // about 6 s (the effect below hides it). Tapping Grami says something new; the bubble opens the chat.
+  const lines = gramiLines({ scene, streak, ongoing: !!ongoing, recovering: !ongoing && streak === 0 })
+  const linesKey = lines.join('|')
+  const [said, setSaid] = useState<{ text: string; n: number } | null>(null)
+  const say = () => setSaid((prev) => ({ text: pickLine(lines, prev?.text ?? null), n: (prev?.n ?? 0) + 1 }))
+  useEffect(() => {
+    if (loading) return
+    let next: number | undefined
+    const speak = () => {
+      if (document.hidden) {
+        next = window.setTimeout(speak, 5000)
+        return
+      }
+      setSaid((prev) => ({ text: pickLine(linesKey.split('|'), prev?.text ?? null), n: (prev?.n ?? 0) + 1 }))
+      next = window.setTimeout(speak, 6000 + 20000 + Math.random() * 20000)
+    }
+    next = window.setTimeout(speak, 1400)
+    return () => clearTimeout(next)
+  }, [loading, linesKey])
+  useEffect(() => {
+    if (!said) return
+    const t = setTimeout(() => setSaid(null), 6000)
+    return () => clearTimeout(t)
+  }, [said])
+  // his mouth moves while he talks, unless he's hurting
+  const mood: BoatMood = said && !ongoing && restingMood !== 'calm' ? 'talk' : restingMood
 
   // this week: the last 7 days, today included
   const week = attacks.filter((a) => new Date(a.started_at).getTime() >= midnight.getTime() - 6 * DAY)
@@ -173,14 +202,29 @@ export function HomePage() {
         </svg>
       </Link>
 
-      {/* Grami floats in the waves; tap to chat */}
+      {/* Grami floats in the waves and says something now and then; tap him for more, tap the bubble to chat */}
       <div className="td-stage">
         {scene === 'evening' && <span className="td-setting-sun" aria-hidden="true" />}
         {scene === 'morning' && <span className="td-rising-sun" aria-hidden="true" />}
         <SeaBack rough={!!ongoing} />
-        <Link to="/chat" className="td-grami" aria-label="Ask Grami about your migraines" onClick={() => !ongoing && play('tap')}>
-          <Boat mood={mood} size={210} water={false} pains={ongoing?.locations} symptoms={ongoing?.symptoms} />
-        </Link>
+        <div className="td-grami">
+          {said && (
+            <Link key={said.n} to="/chat" className="td-say" aria-live="polite">
+              {said.text}
+            </Link>
+          )}
+          <button
+            type="button"
+            className="td-grami-btn"
+            aria-label="Grami: tap to hear something new"
+            onClick={() => {
+              if (!ongoing) play('tap')
+              say()
+            }}
+          >
+            <Boat mood={mood} size={210} water={false} pains={ongoing?.locations} symptoms={ongoing?.symptoms} />
+          </button>
+        </div>
         <SeaFront rough={!!ongoing} />
       </div>
 

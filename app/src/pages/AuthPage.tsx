@@ -1,6 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { enabledProviders, supabase } from '../lib/supabase'
-import { LogoMark, Wordmark } from '../components/Logo'
+import { Wordmark } from '../components/Logo'
+import { Boat } from '../components/Boat'
+import { Glyph } from '../components/Glyph'
+import { QuietSea, Sky } from '../components/Sky'
 
 function GoogleG() {
   return (
@@ -13,7 +16,13 @@ function GoogleG() {
   )
 }
 
+/**
+ * The welcome screen (after Mighty screen 8): a lavender sunset, Grami floating in front of a big
+ * glowing sun, "Take care." Get started / I already have an account bring up a frosted card with
+ * the sign-in form, while the sunset stays behind it.
+ */
 export function AuthPage() {
+  const [view, setView] = useState<'welcome' | 'form'>('welcome')
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -52,53 +61,97 @@ export function AuthPage() {
     }
   }
 
+  const open = (m: 'signin' | 'signup') => {
+    setMode(m)
+    setMessage(null)
+    setView('form')
+  }
+
   return (
-    <div className="auth">
-      <div className="auth-brand">
-        <LogoMark size={88} animate="once" />
-        <h1>
-          <Wordmark />
-        </h1>
-        <p className="muted">Your calm little migraine journal.</p>
+    <div className={`welcome td-evening td-dark is-${view}`}>
+      <Sky scene="evening" />
+
+      <header className="welcome-top">
+        {view === 'form' && (
+          <button type="button" className="welcome-back" onClick={() => setView('welcome')} aria-label="Back">
+            <Glyph name="back" size={22} />
+          </button>
+        )}
+        <Wordmark />
+      </header>
+
+      <div className="welcome-hello">
+        <h1>{view === 'welcome' ? 'Take care.' : mode === 'signup' ? 'Welcome aboard.' : 'Welcome back.'}</h1>
+        <p>
+          {view === 'welcome' ? (
+            <>
+              You’re not alone
+              <br />
+              in this journey.
+            </>
+          ) : mode === 'signup' ? (
+            'Let’s set sail together.'
+          ) : (
+            'Grami missed you.'
+          )}
+        </p>
+        {view === 'welcome' && <span className="welcome-heart">♡</span>}
       </div>
 
-      {google && (
-        <>
-          <button type="button" className="btn btn-soft btn-google btn-block" onClick={signInWithGoogle} disabled={busy}>
-            <GoogleG />
-            Continue with Google
-          </button>
-          <div className="divider">
-            <span>or with email</span>
+      {/* the sun sets behind Grami, who floats on the evening sea */}
+      <div className="welcome-stage">
+        <span className="welcome-sun" aria-hidden="true" />
+      </div>
+      <QuietSea>
+        <span className="welcome-grami">
+          <Boat mood="happy" size={view === 'welcome' ? 150 : 110} water={false} />
+        </span>
+      </QuietSea>
+
+      <div className="welcome-panel">
+        {view === 'welcome' ? (
+          <>
+            <button type="button" className="td-btn" onClick={() => open('signup')}>
+              Get started
+            </button>
+            <button type="button" className="welcome-link" onClick={() => open('signin')}>
+              I already have an account
+            </button>
+          </>
+        ) : (
+          <div className="glass welcome-card">
+            {google && (
+              <>
+                <button type="button" className="welcome-google" onClick={signInWithGoogle} disabled={busy}>
+                  <GoogleG />
+                  Continue with Google
+                </button>
+                <div className="welcome-or">or with email</div>
+              </>
+            )}
+            <form className="welcome-form" onSubmit={submit}>
+              <input type="email" autoComplete="email" required placeholder="Email" aria-label="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input
+                type="password"
+                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                minLength={6}
+                required
+                placeholder={mode === 'signup' ? 'Password (6 or more characters)' : 'Password'}
+                aria-label="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {message && <p className="notice">{message}</p>}
+              <button className="td-btn" disabled={busy}>
+                {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
+              </button>
+            </form>
+            <button type="button" className="welcome-link" onClick={() => open(mode === 'signin' ? 'signup' : 'signin')}>
+              {mode === 'signin' ? 'New here? Create an account' : 'Already have an account? Sign in'}
+            </button>
           </div>
-        </>
-      )}
-
-      <form className="card auth-form" onSubmit={submit}>
-        <label className="field">
-          <span>Email</span>
-          <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        </label>
-        <label className="field">
-          <span>Password</span>
-          <input
-            type="password"
-            autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-            minLength={6}
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-        {message && <p className="notice">{message}</p>}
-        <button className="btn btn-deep btn-block" disabled={busy}>
-          {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
-        </button>
-      </form>
-
-      <button className="btn btn-quiet" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
-        {mode === 'signin' ? 'New here? Create an account' : 'Already have an account? Sign in'}
-      </button>
+        )}
+      </div>
     </div>
   )
 }
