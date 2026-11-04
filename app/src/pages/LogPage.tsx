@@ -31,6 +31,15 @@ export function LogPage() {
   return <LogForm key={id ?? 'new'} id={id} initial={existing ?? emptyAttack()} />
 }
 
+/** Grami as you describe it: the face for the pain level, glowing where it hurts, signs for each symptom. */
+function GramiNow({ form }: { form: AttackInput }) {
+  return (
+    <span className="lg-gramis">
+      <Boat mood={moodFor(form.intensity)} size={170} water={false} pains={form.locations} symptoms={form.symptoms} triggers={form.triggers} meds={form.medications} title="Grami, showing how you feel" />
+    </span>
+  )
+}
+
 const MED_OPTIONS = MEDICATIONS.map((m) => ({ value: m, label: m }))
 const RELIEF_OPTIONS = RELIEF.map((r) => ({ value: String(r.value), label: r.label }))
 
@@ -93,20 +102,36 @@ function LogForm({ id, initial }: { id?: string; initial: AttackInput }) {
     { title: id ? 'How bad was it?' : 'How’s your headache?', body: <PainFaces value={form.intensity} onChange={(v) => set('intensity', v)} /> },
     {
       title: 'Where does it hurt?',
-      body: <Chips show={8} options={LOCATIONS} customs={customs('locations', LOCATIONS)} value={form.locations} onChange={(v) => set('locations', v)} />,
+      body: (
+        <>
+          <GramiNow form={form} />
+          <Chips show={8} options={LOCATIONS} customs={customs('locations', LOCATIONS)} value={form.locations} onChange={(v) => set('locations', v)} />
+        </>
+      ),
     },
     {
       title: 'Any symptoms?',
-      body: <Chips show={9} options={SYMPTOMS} customs={customs('symptoms', SYMPTOMS)} value={form.symptoms} onChange={(v) => set('symptoms', v)} />,
+      body: (
+        <>
+          <GramiNow form={form} />
+          <Chips show={9} options={SYMPTOMS} customs={customs('symptoms', SYMPTOMS)} value={form.symptoms} onChange={(v) => set('symptoms', v)} />
+        </>
+      ),
     },
     {
       title: 'Maybe because…',
-      body: <Chips show={8} options={TRIGGERS} customs={customs('triggers', TRIGGERS)} value={form.triggers} onChange={(v) => set('triggers', v)} />,
+      body: (
+        <>
+          <GramiNow form={form} />
+          <Chips show={8} options={TRIGGERS} customs={customs('triggers', TRIGGERS)} value={form.triggers} onChange={(v) => set('triggers', v)} />
+        </>
+      ),
     },
     {
       title: 'Took anything?',
       body: (
         <>
+          <GramiNow form={form} />
           <Chips show={6} options={MED_OPTIONS} customs={customValues('medications', attacks, MEDICATIONS)} value={form.medications} onChange={(v) => set('medications', v)} />
           {form.medications.length > 0 && (
             <div className="lg-relief">
@@ -237,10 +262,10 @@ function LogForm({ id, initial }: { id?: string; initial: AttackInput }) {
         </div>
       </form>
 
-      {/* Grami floats by on a quiet sea; the face shows how bad it is, the water stays calm */}
-      <QuietSea>
+      {/* the sea mirrors the pain: glassy at 1, rougher as it rises; Grami only bobs gently */}
+      <QuietSea pain={form.intensity}>
         <span className="lg-grami">
-          <Boat mood={moodFor(form.intensity)} size={84} water={false} />
+          <Boat mood={moodFor(form.intensity)} size={84} water={false} pains={form.locations} symptoms={form.symptoms} triggers={form.triggers} meds={form.medications} />
         </span>
       </QuietSea>
     </div>

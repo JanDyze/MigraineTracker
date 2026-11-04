@@ -1,5 +1,7 @@
-import { useId } from 'react'
+import { useId, type CSSProperties } from 'react'
 import type { BoatMood } from '../lib/mood'
+import { presetFor } from '../lib/attacks'
+import { Glyph } from './Glyph'
 
 /*
  * Grami, Might's little companion: a soft white mochi sitting in a paper boat, paws curled over
@@ -82,9 +84,26 @@ const cloud = (x: number, y: number, r: number) =>
 const RAIN = Array.from({ length: 24 }, (_, i) => `M${-100 + i * 15} ${-30 + ((i * 37) % 60)}l-3 9`).join('')
 
 /** water: the strip of sea under the boat; scene: the full picture (round sky, clouds, sparkles, big waves) for Today. */
-type Props = { mood?: BoatMood; size?: number; water?: boolean; scene?: boolean; title?: string }
+/**
+ * water: the strip of sea under the boat; scene: the full picture for Today.
+ * pains: where it hurts (location values from the log); symptoms: how else it feels. Both show on
+ * Grami: a pulsing glow on that part of the head, and a little sign for each symptom.
+ */
+type Props = {
+  mood?: BoatMood
+  size?: number
+  water?: boolean
+  scene?: boolean
+  title?: string
+  pains?: string[]
+  symptoms?: string[]
+  /** what might have set it off: shown as icons in a thought bubble */
+  triggers?: string[]
+  /** medicine taken: Grami holds a little capsule */
+  meds?: string[]
+}
 
-export function Boat({ mood = 'calm', size = 120, water = true, scene = false, title }: Props) {
+export function Boat({ mood = 'calm', size = 120, water = true, scene = false, title, pains = [], symptoms = [], triggers = [], meds = [] }: Props) {
   const id = useId().replace(/[^\w-]/g, '')
   const url = (name: string) => `url(#${id}-${name})`
   const rough = ROUGH.includes(mood)
@@ -260,8 +279,30 @@ export function Boat({ mood = 'calm', size = 120, water = true, scene = false, t
           <ellipse cx="59" cy="50" rx="3" ry="1.6" fill="#ffffff" opacity="0.85" />
           <ellipse cx="116" cy="50" rx="2.4" ry="1.4" fill="#ffffff" opacity="0.8" />
 
+          {/* where it hurts glows on the head, and feeling sick turns Grami a little green */}
+          <g clipPath={url('body')}>
+            {(symptoms.includes('Nausea') || symptoms.includes('Vomiting')) && (
+              <g>
+                <ellipse cx="94" cy="30" rx="36" ry="20" fill="#9edca4" opacity={symptoms.includes('Vomiting') ? 0.55 : 0.4} filter={url('softer')} />
+                <path d="M84 14v9M92 12v12M100 14v9" fill="none" stroke="#5aa86a" strokeWidth="2.2" strokeLinecap="round" opacity="0.75" />
+              </g>
+            )}
+            {symptoms.includes('Brain fog') && <ellipse cx="80" cy="14" rx="50" ry="12" fill="#e3e9f0" opacity="0.7" filter={url('softer')} />}
+            {pains.flatMap((spot) => PAIN_SPOTS[spot] ?? []).map(([cx, cy, rx, ry], i) => (
+              <ellipse key={i} className="boat-pain" cx={cx} cy={cy} rx={rx} ry={ry} fill="#ff6f61" opacity="0.45" filter={url('softer')} />
+            ))}
+          </g>
+
           <g transform={FACE_TURN}>
             <Face mood={mood} url={url} />
+            {symptoms.includes('Light sensitivity') && (
+              <g>
+                <path d="M57 46.5h13.5a2 2 0 0 1 2 2.2l-.6 4.2a4 4 0 0 1-4 3.4H62a4.5 4.5 0 0 1-4.4-3.6Z" fill={INK} />
+                <path d="M89.5 46.5H103a2 2 0 0 1 2 2.2l-.6 4.2a4 4 0 0 1-4 3.4h-5.4a4.5 4.5 0 0 1-4.4-3.6Z" fill={INK} />
+                <path d="M72.5 49q8.5-3 17 0M57 48l-6-2.5M105 48l5-2.5" fill="none" stroke={INK} strokeWidth="2" strokeLinecap="round" />
+                <path d="M60 49l3.5 0M92.5 49l3.5 0" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.7" />
+              </g>
+            )}
           </g>
         </g>
         </g>
@@ -285,12 +326,20 @@ export function Boat({ mood = 'calm', size = 120, water = true, scene = false, t
             </g>
           ))}
         </g>
-
+        {/* a capsule held up by the front paw, once medicine is noted */}
+        {meds.length > 0 && (
+          <g className="boat-buddy" transform="translate(51 51) rotate(-25) scale(0.62)" style={{ color: INK }}>
+            <Glyph name="pill" size={32} />
+          </g>
+        )}
       </g>
 
       {/* the mood marks (zzz, zaps, notes, the storm cloud) stay put while Grami bobs and rocks */}
       <g transform={SMALL}>
-        <Extras mood={mood} />
+        {/* the thought bubble takes the mood marks' corner, so they don't crowd each other */}
+        {triggers.length ? <TriggerThought triggers={triggers} /> : <Extras mood={mood} />}
+        <SymptomMarks symptoms={symptoms} />
+        <PainMarks pains={pains} />
       </g>
 
       {(water || scene) && (
@@ -473,4 +522,127 @@ function Extras({ mood }: { mood: BoatMood }) {
     default:
       return null
   }
+}
+
+/** Where each pain location glows on Grami's head (head coordinates, face turned right). */
+const PAIN_SPOTS: Record<string, [number, number, number, number][]> = {
+  Forehead: [[92, 24, 17, 7]],
+  'Behind eyes': [[72, 40, 8, 6], [109, 40, 8, 6]],
+  Temples: [[54, 34, 7, 8], [124, 32, 5, 8]],
+  'Left side': [[46, 40, 13, 20]],
+  'Right side': [[120, 38, 10, 18]],
+  'All over': [[80, 30, 36, 20]],
+  'Back of head': [[42, 22, 12, 12]],
+  Neck: [[96, 66, 22, 6]],
+}
+
+
+/** Three little comic "ouch" lines fanning out from (x, y) at the given angle (degrees). */
+function ouch(x: number, y: number, angle: number) {
+  return [-30, 0, 30]
+    .map((d) => {
+      const r = ((angle + d) * Math.PI) / 180
+      const [c, sn] = [Math.cos(r), Math.sin(r)]
+      return `M${(x + c * 2).toFixed(1)} ${(y + sn * 2).toFixed(1)}L${(x + c * (d ? 7 : 9)).toFixed(1)} ${(y + sn * (d ? 7 : 9)).toFixed(1)}`
+    })
+    .join('')
+}
+
+/** Where the "ouch" lines go for each pain location: just outside the head, pointing away. */
+const OUCH_AT: Record<string, [number, number, number][]> = {
+  Forehead: [[104, 3, -70]],
+  'Behind eyes': [[132, 34, -10]],
+  Temples: [[33, 28, -150], [128, 22, -40]],
+  'Left side': [[27, 46, 180]],
+  'Right side': [[135, 46, 0]],
+  'All over': [[80, -1, -90], [27, 40, 180], [135, 40, 0]],
+  'Back of head': [[36, 14, -135]],
+  Neck: [[133, 62, 20]],
+}
+
+function PainMarks({ pains }: { pains: string[] }) {
+  const spots = [...new Set(pains)].flatMap((p) => OUCH_AT[p] ?? [])
+  if (!spots.length) return null
+  return (
+    <g fill="none" stroke="#ef5b4c" strokeWidth="2.2" strokeLinecap="round">
+      {spots.map(([x, y, ang], i) => (
+        <path key={i} className="boat-ouch" d={ouch(x, y, ang)} style={{ animationDelay: `${i * 0.25}s` }} />
+      ))}
+    </g>
+  )
+}
+
+/** A little sign around Grami for each symptom ticked in the log. */
+function SymptomMarks({ symptoms }: { symptoms: string[] }) {
+  const has = (v: string) => symptoms.includes(v)
+  const move = !stillFlag()
+  return (
+    <g>
+      {has('Vomiting') && (
+        <path className="boat-float" d="M140 54q-4 6 0 9q4-3 0-9z" fill="#9edca4" stroke="#4f9a5e" strokeWidth="1.4" strokeLinejoin="round" />
+      )}
+      {has('Sound sensitivity') && (
+        <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 40q4 5 0 10M8 36q7 9 0 18" stroke={INK} strokeWidth="2" />
+          <circle cx="11" cy="45" r="9.5" stroke="#ef5b4c" strokeWidth="2" />
+          <path d="M4.3 51.7l13.4-13.4" stroke="#ef5b4c" strokeWidth="2" />
+        </g>
+      )}
+      {has('Smell sensitivity') && (
+        <path className="boat-float" d="M141 66q-3-3 0-6t0-6t0-6M147 64q-3-3 0-6t0-6M153 66q-3-3 0-6t0-6t0-6" fill="none" stroke="#7fa35a" strokeWidth="1.9" strokeLinecap="round" />
+      )}
+      {has('Aura') && (
+        <g className="boat-aura" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M24 36l3-6 4 4 3-7 4 4 3-7 4 3 3-6 4 3" stroke="#f6c234" strokeWidth="2.6" />
+          <path d="M24 36l3-6 4 4 3-7 4 4 3-7 4 3 3-6 4 3" stroke="#5fd3c4" strokeWidth="1" transform="translate(1.5 2.5)" />
+        </g>
+      )}
+      {has('Fatigue') && (
+        <g className="boat-float" fill="none" stroke={INK} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M139 26h7l-7 7h7" />
+          <path d="M148 15h5l-5 5h5" strokeWidth="1.5" />
+        </g>
+      )}
+      {has('Brain fog') && (
+        <g className="boat-cloud" opacity="0.9">
+          <path d="M56 -4a7 7 0 0 1 12-5a9 9 0 0 1 16 1a6 6 0 0 1 7 7H56Z" fill="#dfe6ee" />
+          <path d="M84 -1a5 5 0 0 1 9-3a6 6 0 0 1 10 2a4 4 0 0 1 4 4H84Z" fill="#cfd8e3" />
+        </g>
+      )}
+      {has('Dizziness') && (
+        <g fill="#f6c234" stroke="#b8860b" strokeWidth="0.8" strokeLinejoin="round">
+          {[0, 1, 2].map((i) => (
+            <path key={i} d={STAR} transform={move ? undefined : `translate(${50 + i * 26} ${i === 1 ? -8 : 0}) scale(0.7)`}>
+              {move && <animateMotion dur="3.6s" repeatCount="indefinite" begin={`${-i * 1.2}s`} path="M80 -6a30 7 0 1 0 0.1 0" />}
+            </path>
+          ))}
+        </g>
+      )}
+    </g>
+  )
+}
+
+/** A thought bubble at Grami's top left with the icons of up to three triggers, and "+N" for more. */
+function TriggerThought({ triggers }: { triggers: string[] }) {
+  const icons = [...new Set(triggers)].map((t) => presetFor(t)?.icon ?? 'question')
+  const shown = icons.slice(0, 3)
+  const more = icons.length - shown.length
+  const w = shown.length * 15 + (more ? 13 : 0) + 6
+  return (
+    <g className="boat-float">
+      <circle cx="44" cy="20" r="2.2" fill="#ffffff" stroke={INK} strokeWidth="1.4" />
+      <circle cx="38" cy="14" r="3.2" fill="#ffffff" stroke={INK} strokeWidth="1.5" />
+      <rect x={34 - w} y="-13" width={w} height="21" rx="10.5" fill="#ffffff" stroke={INK} strokeWidth="1.8" />
+      {shown.map((icon, i) => (
+        <g key={icon} transform={`translate(${37 - w + i * 15} -10.5)`} style={{ color: INK, '--fill': '#ffe3a6' } as CSSProperties}>
+          <Glyph name={icon} size={16} />
+        </g>
+      ))}
+      {more > 0 && (
+        <text x={27} y="2" textAnchor="middle" fontSize="8.5" fontWeight="700" fill={INK}>
+          +{more}
+        </text>
+      )}
+    </g>
+  )
 }

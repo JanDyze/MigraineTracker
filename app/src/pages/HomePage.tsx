@@ -179,7 +179,7 @@ export function HomePage() {
         {scene === 'morning' && <span className="td-rising-sun" aria-hidden="true" />}
         <SeaBack rough={!!ongoing} />
         <Link to="/chat" className="td-grami" aria-label="Ask Grami about your migraines" onClick={() => !ongoing && play('tap')}>
-          <Boat mood={mood} size={210} water={false} />
+          <Boat mood={mood} size={210} water={false} pains={ongoing?.locations} symptoms={ongoing?.symptoms} />
         </Link>
         <SeaFront rough={!!ongoing} />
       </div>
