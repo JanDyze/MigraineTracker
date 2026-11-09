@@ -30,7 +30,7 @@ function Gate() {
   if (loading)
     return (
       <div className="splash">
-        <LogoMark size={72} animate="pulse" />
+        <LogoMark size={72} animate="wave" />
       </div>
     )
   if (!session) return <AuthPage />

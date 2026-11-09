@@ -489,13 +489,33 @@ mark {
     logo-ghost 0.9s cubic-bezier(0.22, 1, 0.36, 1) 1.12s;
 }
 
-/* Loading: the finished mark keeps beating — a ripple from each crest, ba-dum, rest. */
-.logo-anim-pulse .logo-ghost-a {
-  animation: logo-ghost 1.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+/* Loading: open ocean. Each wave layer slides right by exactly one wavelength per loop (344 and
+   258 units), so the loop is seamless; the back swell is slower, with a gentle rise and fall,
+   which gives the water some depth. */
+.logo-sea-front {
+  animation: logo-sea-front 2.4s linear infinite;
 }
 
-.logo-anim-pulse .logo-ghost-b {
-  animation: logo-ghost 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.28s infinite;
+.logo-sea-back {
+  animation: logo-sea-back 3.6s linear infinite;
+}
+
+@keyframes logo-sea-front {
+  to {
+    transform: translateX(344px);
+  }
+}
+
+@keyframes logo-sea-back {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(129px, 18px);
+  }
+  100% {
+    transform: translate(258px, 0);
+  }
 }
 
 @keyframes logo-pop {
