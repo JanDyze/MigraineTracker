@@ -11,7 +11,16 @@ type Store = {
   remove: (id: string) => Promise<void>
 }
 
-const COLUMNS = 'id, started_at, ended_at, intensity, locations, symptoms, triggers, medications, relief, notes'
+const COLUMNS = 'id, started_at, ended_at, intensity, locations, symptoms, triggers, medications, remedies, relief, notes'
+// Before the `remedies` migration reaches a database, fall back to the columns it already has.
+const OLD_COLUMNS = COLUMNS.replace(' remedies,', '')
+let hasRemedies = true
+
+/** Postgres "undefined column" or PostgREST "column not in schema cache", naming remedies. */
+const missingRemedies = (e: { code?: string; message?: string } | null) =>
+  !!e && (e.code === '42703' || e.code === 'PGRST204') && /remedies/.test(e.message ?? '')
+
+const withRemedies = (row: Omit<Attack, 'remedies'> & { remedies?: string[] }): Attack => ({ ...row, remedies: row.remedies ?? [] })
 
 const StoreContext = createContext<Store | null>(null)
 
@@ -28,16 +37,17 @@ export function AttackStoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (mock) return
-    supabase
-      .from('attacks')
-      .select(COLUMNS)
-      .order('started_at', { ascending: false })
-      .limit(5000)
-      .then(({ data, error }) => {
-        if (error) setError(error.message)
-        else setAttacks(data as Attack[])
-        setLoading(false)
-      })
+    const load = (columns: string) => supabase.from('attacks').select(columns).order('started_at', { ascending: false }).limit(5000)
+    ;(async () => {
+      let { data, error } = await load(COLUMNS)
+      if (missingRemedies(error)) {
+        hasRemedies = false
+        ;({ data, error } = await load(OLD_COLUMNS))
+      }
+      if (error) setError(error.message)
+      else setAttacks((data as unknown as Attack[]).map(withRemedies))
+      setLoading(false)
+    })()
   }, [])
 
   const save = useCallback(async (input: AttackInput, id?: string) => {
@@ -46,12 +56,19 @@ export function AttackStoreProvider({ children }: { children: ReactNode }) {
       setAttacks((prev) => [saved, ...prev.filter((a) => a.id !== saved.id)].sort(byNewest))
       return saved
     }
-    const query = id
-      ? supabase.from('attacks').update(input).eq('id', id)
-      : supabase.from('attacks').insert(input)
-    const { data, error } = await query.select(COLUMNS).single()
+    const send = (row: Partial<AttackInput>, columns: string) =>
+      (id ? supabase.from('attacks').update(row).eq('id', id) : supabase.from('attacks').insert(row)).select(columns).single()
+    const legacy = () => {
+      const { remedies: _, ...rest } = input
+      return send(rest, OLD_COLUMNS)
+    }
+    let { data, error } = hasRemedies ? await send(input, COLUMNS) : await legacy()
+    if (hasRemedies && missingRemedies(error)) {
+      hasRemedies = false
+      ;({ data, error } = await legacy())
+    }
     if (error) throw new Error(error.message)
-    const saved = data as Attack
+    const saved = withRemedies(data as unknown as Attack)
     setAttacks((prev) => [saved, ...prev.filter((a) => a.id !== saved.id)].sort(byNewest))
     return saved
   }, [])

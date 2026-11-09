@@ -530,6 +530,8 @@ function Extras({ mood }: { mood: BoatMood }) {
 const PAIN_SPOTS: Record<string, [number, number, number, number][]> = {
   Forehead: [[92, 24, 17, 7]],
   'Behind eyes': [[72, 40, 8, 6], [109, 40, 8, 6]],
+  'Behind left eye': [[72, 40, 8, 6]],
+  'Behind right eye': [[109, 40, 8, 6]],
   Temples: [[54, 34, 7, 8], [124, 32, 5, 8]],
   'Left side': [[46, 40, 13, 20]],
   'Right side': [[120, 38, 10, 18]],
@@ -554,6 +556,8 @@ function ouch(x: number, y: number, angle: number) {
 const OUCH_AT: Record<string, [number, number, number][]> = {
   Forehead: [[104, 3, -70]],
   'Behind eyes': [[132, 34, -10]],
+  'Behind left eye': [[64, 8, -110]],
+  'Behind right eye': [[132, 34, -10]],
   Temples: [[33, 28, -150], [128, 22, -40]],
   'Left side': [[27, 46, 180]],
   'Right side': [[135, 46, 0]],

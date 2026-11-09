@@ -16,7 +16,7 @@ const THEMES: { value: ThemePref; label: string }[] = [
 ]
 
 function toCsv(attacks: Attack[]) {
-  const header = ['started_at', 'ended_at', 'intensity', 'how_bad', 'locations', 'symptoms', 'triggers', 'medications', 'helped', 'notes']
+  const header = ['started_at', 'ended_at', 'intensity', 'how_bad', 'locations', 'symptoms', 'triggers', 'medications', 'other_remedies', 'helped', 'notes']
   const cell = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`
   const rows = attacks.map((a) =>
     [
@@ -28,6 +28,7 @@ function toCsv(attacks: Attack[]) {
       a.symptoms.join('; '),
       a.triggers.join('; '),
       a.medications.join('; '),
+      a.remedies.join('; '),
       a.relief === null ? '' : RELIEF[a.relief].label,
       a.notes,
     ]

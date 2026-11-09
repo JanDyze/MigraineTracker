@@ -7,13 +7,15 @@ export type Attack = {
   symptoms: string[]
   triggers: string[]
   medications: string[]
+  /** Things besides medicine that were tried: sleep, a cold shower, menthol rub… */
+  remedies: string[]
   relief: number | null
   notes: string | null
 }
 
 export type AttackInput = Omit<Attack, 'id'>
 
-export type TagField = 'locations' | 'symptoms' | 'triggers' | 'medications'
+export type TagField = 'locations' | 'symptoms' | 'triggers' | 'medications' | 'remedies'
 
 /** A preset tag: `value` is what's stored, `label` is the short sticker text, `icon` names a glyph. */
 export type Preset = { value: string; label: string; icon: string }
@@ -49,6 +51,8 @@ export const SYMPTOMS: Preset[] = [
 export const LOCATIONS: Preset[] = [
   { value: 'Forehead', label: 'Forehead', icon: 'z-forehead' },
   { value: 'Behind eyes', label: 'Behind eyes', icon: 'z-eyes' },
+  { value: 'Behind left eye', label: 'Left eye', icon: 'z-eye-l' },
+  { value: 'Behind right eye', label: 'Right eye', icon: 'z-eye-r' },
   { value: 'Temples', label: 'Temples', icon: 'z-temples' },
   { value: 'Left side', label: 'Left side', icon: 'z-left' },
   { value: 'Right side', label: 'Right side', icon: 'z-right' },
@@ -59,7 +63,22 @@ export const LOCATIONS: Preset[] = [
 
 export const MEDICATIONS = ['Ibuprofen', 'Paracetamol', 'Naproxen', 'Aspirin', 'Sumatriptan', 'Rizatriptan']
 
-const ALL_PRESETS = [...TRIGGERS, ...SYMPTOMS, ...LOCATIONS]
+/** What else was tried besides medicine. */
+export const REMEDIES: Preset[] = [
+  { value: 'Sleep', label: 'Slept it off', icon: 'sleep' },
+  { value: 'Rest in the dark', label: 'Dark room', icon: 'moon' },
+  { value: 'Cold shower', label: 'Cold shower', icon: 'shower' },
+  { value: 'Cold pack', label: 'Ice pack', icon: 'ice' },
+  { value: 'Menthol rub', label: 'Vicks / menthol', icon: 'balm' },
+  { value: 'Massage', label: 'Massage', icon: 'hand' },
+  { value: 'Water', label: 'Drank water', icon: 'drop' },
+  { value: 'Caffeine', label: 'Coffee', icon: 'coffee' },
+  { value: 'Fresh air', label: 'Fresh air', icon: 'breeze' },
+  { value: 'Warm compress', label: 'Warm compress', icon: 'warm' },
+]
+
+// TRIGGERS comes first so the shared 'Caffeine' keeps its trigger label everywhere but the remedy chips
+const ALL_PRESETS = [...TRIGGERS, ...SYMPTOMS, ...LOCATIONS, ...REMEDIES]
 
 export function presetFor(value: string): Preset | undefined {
   return ALL_PRESETS.find((p) => p.value === value)
@@ -110,6 +129,7 @@ export function emptyAttack(): AttackInput {
     symptoms: [],
     triggers: [],
     medications: [],
+    remedies: [],
     relief: null,
     notes: null,
   }

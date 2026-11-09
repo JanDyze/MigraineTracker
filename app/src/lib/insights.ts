@@ -98,7 +98,7 @@ function helped(all: Attack[], r: Range) {
   const list_ = inRange(all, r)
   const meds = new Map<string, { took: number; rated: number; helped: number }>()
   for (const a of list_)
-    for (const m of a.medications) {
+    for (const m of [...a.medications, ...a.remedies.map(labelFor)]) {
       const e = meds.get(m) ?? { took: 0, rated: 0, helped: 0 }
       e.took++
       if (a.relief !== null) {
@@ -107,10 +107,10 @@ function helped(all: Attack[], r: Range) {
       }
       meds.set(m, e)
     }
-  if (!meds.size) return `You didn't note any medication ${r.label}. If you take something next time, tell me and I'll keep score.`
+  if (!meds.size) return `You didn't note any medicine or remedies ${r.label}. If you take or try something next time, tell me and I'll keep score.`
   const rated = [...meds.entries()].filter(([, e]) => e.rated > 0).sort((a, b) => b[1].helped / b[1].rated - a[1].helped / a[1].rated)
   if (!rated.length)
-    return `You took ${list([...meds.keys()])} ${r.label}, but didn't say whether it helped. Answer "did it help?" next time and I'll tell you what works.`
+    return `You used ${list([...meds.keys()])} ${r.label}, but didn't say whether it helped. Answer "did it help?" next time and I'll tell you what works.`
   const [best, e] = rated[0]
   let s = `${best} helped you ${e.helped} of ${plural(e.rated, 'time')} ${r.label}.`
   const rest = rated.slice(1).map(([m, x]) => `${m} ${x.helped}/${x.rated}`)

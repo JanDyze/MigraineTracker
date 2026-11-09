@@ -47,7 +47,8 @@ function seeded(seed: number) {
 }
 
 const TRIGGERS = ['Stress', 'Poor sleep', 'Skipped meal', 'Screen time', 'Weather change', 'Caffeine', 'Dehydration']
-const LOCATIONS = ['Forehead', 'Temples', 'Behind eyes', 'Left side', 'Back of head']
+const LOCATIONS = ['Forehead', 'Temples', 'Behind eyes', 'Behind left eye', 'Left side', 'Back of head']
+const REMEDIES = ['Sleep', 'Rest in the dark', 'Cold shower', 'Menthol rub', 'Water']
 const SYMPTOMS = ['Nausea', 'Light sensitivity', 'Sound sensitivity', 'Fatigue', 'Aura']
 const MEDS = ['Ibuprofen', 'Sumatriptan', 'Paracetamol']
 
@@ -68,6 +69,7 @@ function history(span: number, calm: number, seed: number): Attack[] {
       symptoms: [pick(SYMPTOMS), ...(r() > 0.5 ? [pick(SYMPTOMS)] : [])].filter((v, i, a) => a.indexOf(v) === i),
       triggers: [pick(TRIGGERS)],
       medications: r() > 0.3 ? [pick(MEDS)] : [],
+      remedies: r() > 0.5 ? [pick(REMEDIES)] : [],
       relief: r() > 0.2 ? Math.floor(r() * 4) : null,
       notes: null,
     })

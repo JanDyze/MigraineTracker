@@ -241,6 +241,45 @@ const GLYPHS: Record<string, ReactNode> = {
     </>
   ),
 
+  /* ---- remedies (besides medicine) ---- */
+  shower: (
+    <>
+      <path d="M7 13a8 8 0 0 1 16 0Z" fill="var(--fill, transparent)" />
+      <path d="M15 5V3h6v4M7 13a8 8 0 0 1 16 0Z" />
+      <path d="M9 18l-1 3M15 18v3M21 18l1 3M11.5 24.5l-.6 2.5M18.5 24.5l.6 2.5" />
+    </>
+  ),
+  ice: (
+    <>
+      <rect x="5" y="9" width="22" height="16" rx="5" fill="var(--fill, transparent)" />
+      <path d="M16 12v10M11.7 14.5l8.6 5M11.7 19.5l8.6-5" strokeWidth="1.9" />
+    </>
+  ),
+  balm: (
+    <>
+      {/* a little jar of menthol rub with a mint leaf on the lid */}
+      <rect x="7" y="15" width="18" height="12" rx="3" fill="var(--fill, transparent)" />
+      <path d="M10 15h12M7 18a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H10a3 3 0 0 1-3-3ZM6 11.5h20V15H6Z" />
+      <path d="M15 11.5c0-4.5 3.5-7.5 9-7.5 0 4.5-3.5 7.5-9 7.5ZM15 11.5l5-4" fill="var(--fill, transparent)" />
+    </>
+  ),
+  hand: (
+    <>
+      <path d="M9 17V9.5a2 2 0 0 1 4 0V15V7a2 2 0 0 1 4 0v8V8.5a2 2 0 0 1 4 0V16v-4a2 2 0 0 1 4 0v7a9 9 0 0 1-9 9h-1a9 9 0 0 1-7.5-4L5 19.5a2 2 0 0 1 3.2-2.4Z" fill="var(--fill, transparent)" />
+    </>
+  ),
+  breeze: (
+    <>
+      <path d="M4 12h15a4 4 0 1 0-4-4M4 18h20a4 4 0 1 1-4 4M4 24h8" />
+    </>
+  ),
+  warm: (
+    <>
+      <rect x="5" y="17" width="22" height="10" rx="4" fill="var(--fill, transparent)" />
+      <path d="M11 13c-1.5-2 1.5-3 0-5M16 13c-1.5-2 1.5-3 0-5M21 13c-1.5-2 1.5-3 0-5" />
+    </>
+  ),
+
   /* ---- symptoms ---- */
   eye: (
     <>
@@ -286,6 +325,9 @@ const GLYPHS: Record<string, ReactNode> = {
       face="eyes-open"
     />
   ),
+  // one eye only, seen as in a mirror so your left eye is on the left
+  'z-eye-l': <Zone hit={<circle cx="12" cy="14.5" r="3.2" />} face="eyes-open" side="L" />,
+  'z-eye-r': <Zone hit={<circle cx="20" cy="14.5" r="3.2" />} face="eyes-open" side="R" />,
   'z-temples': (
     <Zone
       hit={

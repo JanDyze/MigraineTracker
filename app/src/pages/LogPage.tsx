@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAttacks } from '../lib/store'
-import { LOCATIONS, MEDICATIONS, RELIEF, SYMPTOMS, TRIGGERS, customValues, emptyAttack, levelLabel, type AttackInput } from '../lib/attacks'
+import { LOCATIONS, MEDICATIONS, RELIEF, REMEDIES, SYMPTOMS, TRIGGERS, customValues, emptyAttack, levelLabel, type AttackInput } from '../lib/attacks'
 import { attackDuration, formatDuration } from '../lib/format'
 import { Chips, PainFaces, WhenPicker, niceWhen } from '../components/LogPickers'
 import { QuietSea } from '../components/Sky'
@@ -95,7 +95,7 @@ function LogForm({ id, initial }: { id?: string; initial: AttackInput }) {
     }
   }
 
-  const customs = (field: 'locations' | 'symptoms' | 'triggers', presets: { value: string }[]) =>
+  const customs = (field: 'locations' | 'symptoms' | 'triggers' | 'remedies', presets: { value: string }[]) =>
     customValues(field, attacks, presets.map((p) => p.value))
 
   const steps: { title: string; body: ReactNode }[] = [
@@ -105,7 +105,7 @@ function LogForm({ id, initial }: { id?: string; initial: AttackInput }) {
       body: (
         <>
           <GramiNow form={form} />
-          <Chips show={8} options={LOCATIONS} customs={customs('locations', LOCATIONS)} value={form.locations} onChange={(v) => set('locations', v)} />
+          <Chips show={10} options={LOCATIONS} customs={customs('locations', LOCATIONS)} value={form.locations} onChange={(v) => set('locations', v)} />
         </>
       ),
     },
@@ -133,7 +133,16 @@ function LogForm({ id, initial }: { id?: string; initial: AttackInput }) {
         <>
           <GramiNow form={form} />
           <Chips show={6} options={MED_OPTIONS} customs={customValues('medications', attacks, MEDICATIONS)} value={form.medications} onChange={(v) => set('medications', v)} />
-          {form.medications.length > 0 && (
+        </>
+      ),
+    },
+    {
+      title: 'Tried anything else?',
+      body: (
+        <>
+          <GramiNow form={form} />
+          <Chips show={10} options={REMEDIES} customs={customs('remedies', REMEDIES)} value={form.remedies} onChange={(v) => set('remedies', v)} />
+          {(form.medications.length > 0 || form.remedies.length > 0) && (
             <div className="lg-relief">
               <span>Did it help?</span>
               <Chips single options={RELIEF_OPTIONS} value={form.relief === null ? [] : [String(form.relief)]} onChange={(v) => set('relief', v.length ? Number(v[0]) : null)} />

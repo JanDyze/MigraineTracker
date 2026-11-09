@@ -90,7 +90,7 @@ export function PatternsPage() {
               <Weekdays attacks={inRange} />
               <Where attacks={inRange} />
               <Bars title="How it feels" rows={rank(inRange, 'symptoms', inRange.length)} empty="No symptoms ticked yet." />
-              <Bars title="What helped" rows={meds(inRange)} empty="No medication noted yet." />
+              <Bars title="What helped" rows={meds(inRange)} empty="No medicine or remedies noted yet." />
             </>
           )}
 
@@ -291,8 +291,8 @@ function DoctorSummary({ attacks }: { attacks: Attack[] }) {
     return [...m.entries()].sort((a, b) => b[1] - a[1])
   }
   const triggers = count((a) => a.triggers).slice(0, 3)
-  const meds = count((a) => a.medications).map(([v, took]) => {
-    const rated = recent.filter((a) => a.medications.includes(v) && a.relief !== null)
+  const meds = count((a) => [...a.medications, ...a.remedies]).map(([v, took]) => {
+    const rated = recent.filter((a) => (a.medications.includes(v) || a.remedies.includes(v)) && a.relief !== null)
     return { v, took, rated: rated.length, helped: rated.filter((a) => a.relief! >= 2).length }
   })
 
@@ -307,7 +307,7 @@ function DoctorSummary({ attacks }: { attacks: Attack[] }) {
     'Migraine summary, last 3 months (from Might)',
     ...rows.map(([k, v]) => `${k}: ${v}`),
     `Top triggers: ${triggers.map(([v, n]) => `${labelFor(v).toLowerCase()} (${n})`).join(', ') || 'none noted'}`,
-    ...meds.map((m) => `${m.v}: taken ${m.took}×${m.rated ? `, helped ${m.helped} of ${m.rated}` : ''}`),
+    ...meds.map((m) => `${labelFor(m.v)}: used ${m.took}×${m.rated ? `, helped ${m.helped} of ${m.rated}` : ''}`),
   ].join('\n')
 
   async function copy() {
@@ -337,9 +337,9 @@ function DoctorSummary({ attacks }: { attacks: Attack[] }) {
         </div>
         {meds.map((m) => (
           <div key={m.v}>
-            <dt>{m.v}</dt>
+            <dt>{labelFor(m.v)}</dt>
             <dd>
-              taken {m.took}×{m.rated ? `, helped ${m.helped} of ${m.rated}` : ''}
+              used {m.took}×{m.rated ? `, helped ${m.helped} of ${m.rated}` : ''}
             </dd>
           </div>
         ))}
@@ -366,7 +366,7 @@ function rank(attacks: Attack[], field: TagField, total: number): Row[] {
 function meds(attacks: Attack[]): Row[] {
   const m = new Map<string, { took: number; rated: number; helped: number }>()
   for (const a of attacks)
-    for (const v of a.medications) {
+    for (const v of [...a.medications, ...a.remedies]) {
       const e = m.get(v) ?? { took: 0, rated: 0, helped: 0 }
       e.took++
       if (a.relief !== null) {
@@ -378,7 +378,7 @@ function meds(attacks: Attack[]): Row[] {
   return [...m.entries()]
     .sort((a, b) => b[1].took - a[1].took)
     .slice(0, 5)
-    .map(([v, e]) => ({ label: v.toLowerCase(), count: e.took, note: e.rated ? `helped ${e.helped} of ${e.rated}` : `${e.took}×` }))
+    .map(([v, e]) => ({ label: labelFor(v).toLowerCase(), count: e.took, note: e.rated ? `helped ${e.helped} of ${e.rated}` : `${e.took}×` }))
 }
 
 function Bars({ title, rows, empty }: { title: string; rows: Row[]; empty: string }) {
