@@ -1,7 +1,10 @@
 // The Model Context Protocol, the small part of it a tools-only server needs: JSON-RPC 2.0 over Streamable HTTP,
 // stateless (no sessions, no server-sent events). Each POST carries one message (or a batch) and gets JSON back.
 // Spec: https://modelcontextprotocol.io/specification
-import { type Ctx, TOOLS, ToolError } from './tools.ts'
+import { MANAGE_TOOLS } from './manage.ts'
+import { type Ctx, TOOLS as EVERYDAY, ToolError } from './tools.ts'
+
+const TOOLS = [...EVERYDAY, ...MANAGE_TOOLS]
 
 export const SERVER = { name: 'manna', title: 'Manna', version: '0.2.0' }
 const PROTOCOLS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05']
@@ -21,12 +24,14 @@ Vocabulary, because it is not always the obvious one:
 
 Working practice:
 - Dates are YYYY-MM-DD in Philippine time. overview reports today's date; use it rather than assuming.
-- Start with overview (or get_setup for the exact account and category names). Accounts and categories can be given by name or id; loans, bills, goals, notes and entries by the id the read tools return.
+- Start with overview (or get_setup for the exact account and category names; list_accounts and list_categories show hidden ones too). Accounts and categories can be given by name or id; loans, bills, goals, notes and entries by the id the read tools return.
 - Listing tools report "truncated". If it is true, narrow the filters instead of treating the list as complete.
 - This is someone's private money. Answer what was asked; don't recite balances or loans they didn't ask about.
 
+Full access: these tools can do everything the app can: record and correct entries, set up and change accounts, categories, budgets, bills, people, loans, goals and settings, run the month-end check, look at receipt photos, manage connector links, and delete any of these.
+
 Recording:
-- Nothing here deletes. A wrong entry is corrected with update_entry; removing one is done in the app.
+- A wrong entry is corrected with update_entry. Deleting (delete_entry, delete_account, delete_loan…) is permanent and can change balances, so confirm with the person before any delete, and prefer hiding or closing when they only want something out of the way.
 - Record only what the person said happened. If an amount or account is unclear, ask; if they only implied an entry, confirm before saving.
 - When the person names an account or category that doesn't exist, the error lists the valid ones: pick the right one or ask, don't guess repeatedly.
 - When the person says past entries are just for the record ("don't deduct", "my balances are already right", catching up on earlier days of the month), set history_only on each one. If it's unclear whether a past entry is already reflected in the balance, ask once and keep that answer for the rest of the batch.
@@ -47,7 +52,7 @@ export function toolList() {
     annotations: {
       title: t.title,
       readOnlyHint: t.readOnly,
-      destructiveHint: false,
+      destructiveHint: Boolean(t.destructive),
       idempotentHint: t.readOnly,
       openWorldHint: false,
     },

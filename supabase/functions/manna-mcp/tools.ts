@@ -2,9 +2,9 @@
 // one person's rows (the connector key decides whose), through the small Db interface, so the same code runs against
 // Supabase in the Edge Function and against in-memory rows in the tests.
 import {
-  type Account, type Category, type CategoryKind, type Data, type Debt, type Note, type TableName, type Tables, type Tx,
+  type Account, type Category, type CategoryKind, type Data, type Debt, type Note, type Settings, type TableName, type Tables, type Tx,
   addDays, balances, debtLeft, debtPaid, daysBetween, dueLabel, endOfMonth, frequencyLabel, goalSaved, isDate, monthOf, monthPlan,
-  monthTotals, nextDue, round2, shiftMonth, tithe,
+  monthTotals, nextDue, round2, shiftMonth, tithe, withinDay,
 } from './money.ts'
 
 export interface Db {
@@ -12,32 +12,43 @@ export interface Db {
   load(): Promise<Data>
   insert<T extends TableName>(table: T, row: Partial<Tables[T]>): Promise<Tables[T]>
   update<T extends TableName>(table: T, id: string, patch: Partial<Tables[T]>): Promise<Tables[T]>
+  remove(table: TableName, id: string): Promise<void>
+  saveSettings(patch: Partial<Settings>): Promise<Settings>
+  /** A signed link to a photo in the receipts bucket (an hour), or null. */
+  photoUrl(path: string): Promise<string | null>
+  removePhoto(path: string): Promise<void>
+  links(): Promise<Link[]>
+  updateLink(id: string, patch: { label?: string; revoked_at?: string }): Promise<void>
 }
+
+export type Link = { id: string; label: string; key_hint: string; created_at: string; last_used_at: string | null; revoked_at: string | null }
 
 export type Ctx = { db: Db; today: string }
 
 /** A mistake Claude can fix and retry: shown to it as the tool's answer, not as a server failure. */
 export class ToolError extends Error {}
 
-type Args = Record<string, unknown>
+export type Args = Record<string, unknown>
 export type Tool = {
   name: string
   title: string
   description: string
   inputSchema: Record<string, unknown>
-  /** reads only; anything else adds or changes rows (nothing here deletes) */
+  /** reads only; anything else adds or changes rows */
   readOnly: boolean
+  /** deletes or revokes something for good */
+  destructive?: boolean
   run: (args: Args, ctx: Ctx) => Promise<unknown>
 }
 
 // ---------------------------------------------------------------- arguments
 
-const S = (description: string, extra: Record<string, unknown> = {}) => ({ type: 'string', description, ...extra })
-const N = (description: string, extra: Record<string, unknown> = {}) => ({ type: 'number', description, ...extra })
-const DATE = (description: string) => S(`${description} YYYY-MM-DD.`, { pattern: '^\\d{4}-\\d{2}-\\d{2}$' })
-const obj = (properties: Record<string, unknown>, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false })
+export const S = (description: string, extra: Record<string, unknown> = {}) => ({ type: 'string', description, ...extra })
+export const N = (description: string, extra: Record<string, unknown> = {}) => ({ type: 'number', description, ...extra })
+export const DATE = (description: string) => S(`${description} YYYY-MM-DD.`, { pattern: '^\\d{4}-\\d{2}-\\d{2}$' })
+export const obj = (properties: Record<string, unknown>, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false })
 
-function text(a: Args, key: string, opts: { required?: boolean; max?: number } = {}): string | null {
+export function text(a: Args, key: string, opts: { required?: boolean; max?: number } = {}): string | null {
   const v = a[key]
   if (v == null || (typeof v === 'string' && !v.trim())) {
     if (opts.required) throw new ToolError(`"${key}" is required.`)
@@ -49,7 +60,7 @@ function text(a: Args, key: string, opts: { required?: boolean; max?: number } =
   return t
 }
 
-function money(a: Args, key: string, opts: { required?: boolean; allowNegative?: boolean } = {}): number | null {
+export function money(a: Args, key: string, opts: { required?: boolean; allowNegative?: boolean } = {}): number | null {
   const v = a[key]
   if (v == null || v === '') {
     if (opts.required) throw new ToolError(`"${key}" is required (pesos).`)
@@ -63,14 +74,14 @@ function money(a: Args, key: string, opts: { required?: boolean; allowNegative?:
   return r
 }
 
-function day(a: Args, key: string, fallback: string | null = null): string | null {
+export function day(a: Args, key: string, fallback: string | null = null): string | null {
   const v = a[key]
   if (v == null || v === '') return fallback
   if (!isDate(v)) throw new ToolError(`"${key}" should be a date like 2026-11-18.`)
   return v
 }
 
-function oneOf<T extends string>(a: Args, key: string, values: readonly T[], fallback?: T): T {
+export function oneOf<T extends string>(a: Args, key: string, values: readonly T[], fallback?: T): T {
   const v = a[key] ?? fallback
   if (typeof v !== 'string' || !values.includes(v as T)) throw new ToolError(`"${key}" must be one of: ${values.join(', ')}.`)
   return v as T
@@ -79,8 +90,10 @@ function oneOf<T extends string>(a: Args, key: string, values: readonly T[], fal
 function flag(a: Args, key: string): boolean | null {
   const v = a[key]
   if (v == null) return null
-  if (typeof v !== 'boolean') throw new ToolError(`"${key}" should be true or false.`)
-  return v
+  if (typeof v === 'boolean') return v
+  // some clients send booleans as text
+  if (v === 'true' || v === 'false') return v === 'true'
+  throw new ToolError(`"${key}" should be true or false.`)
 }
 
 /** history_only: a past entry the balances already reflect. Only sent to the database when true, so rows keep the default. */
@@ -91,7 +104,7 @@ const HISTORY_ONLY = {
 }
 const historyRow = (a: Args) => (flag(a, 'history_only') ? { affects_balance: false } : {})
 
-function limit(a: Args, fallback: number, max: number): number {
+export function limit(a: Args, fallback: number, max: number): number {
   const v = a.limit
   if (v == null) return fallback
   if (typeof v !== 'number' || !Number.isInteger(v) || v < 1) throw new ToolError('"limit" should be a whole number above zero.')
@@ -100,16 +113,16 @@ function limit(a: Args, fallback: number, max: number): number {
 
 // ---------------------------------------------------------------- lookups by id or name
 
-const lower = (s: string) => s.trim().toLowerCase()
+export const lower = (s: string) => s.trim().toLowerCase()
 
-function pickAccount(d: Data, ref: string, field = 'account'): Account {
+export function pickAccount(d: Data, ref: string, field = 'account'): Account {
   const r = lower(ref)
   const a = d.accounts.find((x) => x.id === ref) ?? d.accounts.find((x) => !x.archived && lower(x.name) === r) ?? d.accounts.find((x) => lower(x.name) === r)
   if (!a) throw new ToolError(`No account called "${ref}" (${field}). Accounts: ${d.accounts.filter((x) => !x.archived).map((x) => x.name).join(', ') || 'none yet'}.`)
   return a
 }
 
-function pickCategory(d: Data, ref: string, kind?: CategoryKind): Category {
+export function pickCategory(d: Data, ref: string, kind?: CategoryKind): Category {
   const r = lower(ref)
   const pool = d.categories.filter((c) => !kind || c.kind === kind)
   const c = pool.find((x) => x.id === ref) ?? pool.find((x) => !x.archived && lower(x.name) === r) ?? pool.find((x) => lower(x.name) === r)
@@ -120,14 +133,14 @@ function pickCategory(d: Data, ref: string, kind?: CategoryKind): Category {
   return c
 }
 
-function pickById<T extends { id: string }>(rows: T[], id: string | null, what: string, label: (r: T) => string, hint: string): T {
+export function pickById<T extends { id: string }>(rows: T[], id: string | null, what: string, label: (r: T) => string, hint: string): T {
   if (!id) throw new ToolError(`Say which ${what} (its id from ${hint}).`)
   const exact = rows.find((r) => r.id === id) ?? rows.filter((r) => lower(label(r)) === lower(id)).at(0)
   if (!exact) throw new ToolError(`No ${what} with id or name "${id}". Look it up with ${hint}.`)
   return exact
 }
 
-function names(d: Data) {
+export function names(d: Data) {
   const account = new Map(d.accounts.map((a) => [a.id, a.name]))
   const category = new Map(d.categories.map((c) => [c.id, c.name]))
   const person = new Map(d.people.map((p) => [p.id, p.name]))
@@ -137,11 +150,11 @@ function names(d: Data) {
 }
 type Names = ReturnType<typeof names>
 
-const KIND_LABEL: Record<Tx['kind'], string> = {
+export const KIND_LABEL: Record<Tx['kind'], string> = {
   expense: 'expense', income: 'income', giving: 'giving', transfer: 'transfer', debt_out: 'loan money out', debt_in: 'loan money in',
 }
 
-function entryView(t: Tx, n: Names) {
+export function entryView(t: Tx, n: Names) {
   const loan = t.debt_id ? n.debt.get(t.debt_id) : undefined
   return {
     id: t.id,
@@ -160,7 +173,7 @@ function entryView(t: Tx, n: Names) {
   }
 }
 
-function loanView(x: Debt, d: Data, n: Names, today: string, withPayments = false) {
+export function loanView(x: Debt, d: Data, n: Names, today: string, withPayments = false) {
   const paid = debtPaid(x, d.transactions)
   const left = debtLeft(x, d.transactions)
   const back = x.direction === 'owed_to_me' ? 'debt_in' : 'debt_out'
@@ -187,7 +200,7 @@ function loanView(x: Debt, d: Data, n: Names, today: string, withPayments = fals
   }
 }
 
-function billView(r: Tables['recurring'], n: Names, today: string) {
+export function billView(r: Tables['recurring'], n: Names, today: string) {
   return {
     id: r.id,
     title: r.title,
@@ -202,7 +215,7 @@ function billView(r: Tables['recurring'], n: Names, today: string) {
   }
 }
 
-function noteView(x: Note, today: string) {
+export function noteView(x: Note, today: string) {
   return {
     id: x.id,
     body: x.body,
@@ -215,7 +228,7 @@ function noteView(x: Note, today: string) {
   }
 }
 
-function goalView(g: Tables['goals'], d: Data, today: string) {
+export function goalView(g: Tables['goals'], d: Data, today: string) {
   const saved = goalSaved(g, d.goal_entries)
   const left = Math.max(0, round2(g.target - saved))
   const months = g.target_on && g.target_on > today ? Math.max(1, Math.ceil(daysBetween(today, g.target_on) / 30.44)) : null
@@ -232,7 +245,7 @@ function goalView(g: Tables['goals'], d: Data, today: string) {
   }
 }
 
-const accountsView = (d: Data) => {
+export const accountsView = (d: Data) => {
   const bal = balances(d.accounts, d.transactions)
   return d.accounts
     .filter((a) => !a.archived)
@@ -326,7 +339,7 @@ const listEntries: Tool = {
   name: 'list_entries',
   title: 'Find entries',
   description:
-    'Entries (every movement of money), newest first, with totals for everything that matched. With no dates it covers the current month. Filter by kind, account, category, person (for loans) or words in the note. Capped by "limit"; if "truncated" comes back true, narrow the filters before treating the list as complete (the totals always cover every match).',
+    'Entries (every movement of money), newest day first and, within a day, in the order the app shows them (arrange_day changes it), with totals for everything that matched. With no dates it covers the current month. Filter by kind, account, category, person (for loans) or words in the note. Capped by "limit"; if "truncated" comes back true, narrow the filters before treating the list as complete (the totals always cover every match).',
   inputSchema: obj({
     from: DATE('First day to include.'),
     to: DATE('Last day to include.'),
@@ -375,7 +388,7 @@ const listEntries: Tool = {
           loan?.title, loan && n.person.get(loan.person_id), t.recurring_id && n.bill.get(t.recurring_id)].filter(Boolean).join(' ').toLowerCase()
         return hay.includes(words)
       })
-      .sort((x, y) => y.occurred_on.localeCompare(x.occurred_on) || (y.created_at ?? '').localeCompare(x.created_at ?? ''))
+      .sort((x, y) => y.occurred_on.localeCompare(x.occurred_on) || withinDay(x, y))
 
     const total = (k: Tx['kind']) => round2(matched.filter((t) => t.kind === k).reduce((s, t) => s + t.amount, 0))
     return {
@@ -585,7 +598,7 @@ const updateEntry: Tool = {
   name: 'update_entry',
   title: 'Correct an entry',
   description:
-    'Fix a mistake in an entry found with list_entries: its amount, date, account, category, note, or whether it is history only (history_only: true stops it moving a balance; false makes it count again). The kind can\'t change, and nothing is deleted here; to undo an entry, the person removes it in the app.',
+    'Fix a mistake in an entry found with list_entries: its amount, date, account, category, note, or whether it is history only (history_only: true stops it moving a balance; false makes it count again). The kind can\'t change; to change it, delete_entry and record it again.',
   inputSchema: obj({
     id: S('The entry\'s id.'),
     amount: N('New amount in pesos.'),
@@ -604,11 +617,13 @@ const updateEntry: Tool = {
     const patch: Partial<Tx> = {}
     const amount = money(a, 'amount')
     if (amount != null) {
-      if (t.debt_id) throw new ToolError('This entry belongs to a loan; change its amount in the app so the loan\'s balance stays right.')
+      if (t.debt_id) throw new ToolError('This entry belongs to a loan; delete it with delete_entry and record the payment again with record_loan_payment (or change the loan with update_loan), so the loan\'s balance stays right.')
       patch.amount = amount
     }
     const date = day(a, 'date')
     if (date) patch.occurred_on = date
+    // moved to another day: it joins that day's top until it's arranged there, as in the app
+    if (date && date !== t.occurred_on && t.day_order != null) patch.day_order = null
     if (text(a, 'account')) patch.account_id = pickAccount(d, text(a, 'account')!).id
     if (text(a, 'to_account')) {
       if (t.kind !== 'transfer') throw new ToolError('Only transfers have a "to_account".')
@@ -649,10 +664,10 @@ const payBill: Tool = {
   async run(a, { db, today }) {
     const d = await db.load()
     const bill = pickById(d.recurring, text(a, 'bill'), 'bill', (r) => r.title, 'list_bills')
-    if (!bill.active) throw new ToolError(`"${bill.title}" is paused in the app; turn it back on there first.`)
+    if (!bill.active) throw new ToolError(`"${bill.title}" is paused; resume it with update_bill (paused: false) first.`)
     const ref = text(a, 'account')
     const account = ref ? pickAccount(d, ref) : d.accounts.find((x) => x.id === bill.account_id) ?? d.accounts.find((x) => !x.archived)
-    if (!account) throw new ToolError('Add an account in the app first, so Manna knows where the money came from.')
+    if (!account) throw new ToolError('Add an account first (add_account), so Manna knows where the money came from.')
     const saved = await db.insert('transactions', {
       kind: bill.kind,
       amount: money(a, 'amount') ?? bill.amount,
@@ -753,7 +768,7 @@ const recordLoanPayment: Tool = {
   async run(a, { db, today }) {
     const d = await db.load()
     const loan = pickById(d.debts, text(a, 'loan'), 'loan', (x) => x.title, 'list_loans')
-    if (loan.closed_at) throw new ToolError(`"${loan.title}" is already closed. Reopen it in the app if more money changed hands.`)
+    if (loan.closed_at) throw new ToolError(`"${loan.title}" is already closed. Reopen it with update_loan (closed: false) if more money changed hands.`)
     const amount = money(a, 'amount', { required: true })!
     const left = debtLeft(loan, d.transactions)
     if (amount > left + 0.005) throw new ToolError(`Only ₱${left} is left on "${loan.title}". Record ₱${left} or less, or record the extra separately.`)

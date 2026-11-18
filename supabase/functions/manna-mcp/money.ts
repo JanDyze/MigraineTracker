@@ -28,22 +28,40 @@ export type Tx = {
   receipt_path?: string | null; created_at?: string
   /** false = history only: counted in totals, budgets and the tithe, but not in account balances */
   affects_balance?: boolean
+  /** place within its day once arranged (1 = top); null = never arranged */
+  day_order?: number | null
+}
+
+/** Order inside one day, as the app shows it (app/src/lib/money.ts withinDay): entries never arranged come first,
+ * newest first, then the arranged ones in their set order. */
+export function withinDay(a: Tx, b: Tx): number {
+  const ao = a.day_order ?? null
+  const bo = b.day_order ?? null
+  if (ao === null && bo === null) return (b.created_at ?? '').localeCompare(a.created_at ?? '')
+  if (ao === null) return -1
+  if (bo === null) return 1
+  return ao - bo || (b.created_at ?? '').localeCompare(a.created_at ?? '')
 }
 export type Note = {
   id: string; body: string; person: string | null; amount: number | null; remind_on: string | null; done_at: string | null
   image_path?: string | null; created_at?: string
 }
 
+export type BalanceCheck = {
+  id: string; checked_on: string; month: string; account_id: string; recorded: number; actual: number
+  adjustment_id: string | null; note: string | null
+}
+
 export type Tables = {
   accounts: Account; categories: Category; budgets: Budget; people: Person; debts: Debt; goals: Goal
-  goal_entries: GoalEntry; recurring: Recurring; transactions: Tx; notes: Note
+  goal_entries: GoalEntry; recurring: Recurring; transactions: Tx; notes: Note; balance_checks: BalanceCheck
 }
 export type TableName = keyof Tables
 export type Data = { settings: Settings } & { [T in TableName]: Tables[T][] }
-export const TABLES: TableName[] = ['accounts', 'categories', 'budgets', 'people', 'debts', 'goals', 'goal_entries', 'recurring', 'transactions', 'notes']
+export const TABLES: TableName[] = ['accounts', 'categories', 'budgets', 'people', 'debts', 'goals', 'goal_entries', 'recurring', 'transactions', 'notes', 'balance_checks']
 
 // Postgres numeric arrives as a string; keep money as numbers everywhere.
-const MONEY = ['opening_balance', 'amount', 'principal', 'target', 'tithe_percent'] as const
+const MONEY = ['opening_balance', 'amount', 'principal', 'target', 'tithe_percent', 'recorded', 'actual'] as const
 export function clean<T>(row: T): T {
   const r = { ...(row as Record<string, unknown>) }
   for (const k of MONEY) if (k in r && r[k] != null) r[k] = Number(r[k])

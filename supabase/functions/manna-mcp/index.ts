@@ -18,6 +18,7 @@ import type { Db } from './tools.ts'
 
 const TZ = Deno.env.get('MANNA_TZ') ?? 'Asia/Manila'
 const KEY_RE = /^mk_[0-9a-f]{48}$/
+const BUCKET = 'manna-receipts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -101,6 +102,38 @@ function db(uid: string): Db {
       const { data, error } = await sb().from(table).update(patch as never).eq('id', id).eq('user_id', uid).select('*').single()
       if (error) throw new Error(error.message)
       return clean(data)
+    },
+    async remove(table, id) {
+      const { error } = await sb().from(table).delete().eq('id', id).eq('user_id', uid)
+      if (error) throw new Error(error.message)
+    },
+    async saveSettings(patch) {
+      const { data, error } = await sb().from('settings').upsert({ ...patch, user_id: uid } as never, { onConflict: 'user_id' })
+        .select('user_id, currency, tithe_percent, onboarded_at').single()
+      if (error) throw new Error(error.message)
+      return clean(data as Settings)
+    },
+    // photos live in the private bucket under <user id>/…; never reach outside that folder
+    async photoUrl(path) {
+      if (!path.startsWith(`${uid}/`)) return null
+      const { data, error } = await sb().storage.from(BUCKET).createSignedUrl(path, 3600)
+      return error ? null : data.signedUrl
+    },
+    async removePhoto(path) {
+      if (!path.startsWith(`${uid}/`)) return
+      const { error } = await sb().storage.from(BUCKET).remove([path])
+      if (error) throw new Error(error.message)
+    },
+    async links() {
+      const { data, error } = await sb().from('connector_keys').select('id, label, key_hint, created_at, last_used_at, revoked_at')
+        .eq('user_id', uid).order('created_at', { ascending: false })
+      if (error) throw new Error(error.message)
+      return data ?? []
+    },
+    async updateLink(id, patch) {
+      const { error } = await sb().from('connector_keys').update(patch).eq('id', id).eq('user_id', uid)
+      if (error) throw new Error(error.message)
+      if (patch.revoked_at) owners.clear() // the revoked key stops at once here, not after the minute's cache
     },
   }
 }
