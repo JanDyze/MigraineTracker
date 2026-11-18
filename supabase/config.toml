@@ -10,7 +10,7 @@ enabled = true
 port = 54321
 # Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
 # endpoints. `public` and `graphql_public` schemas are included by default.
-schemas = ["public", "graphql_public", "might"]
+schemas = ["public", "graphql_public", "might", "manna"]
 # Extra schemas to add to the search_path of every request.
 extra_search_path = ["public", "extensions"]
 # The maximum number of rows returns from a view, table, or stored procedure. Limits payload size
@@ -161,7 +161,7 @@ site_url = "http://localhost:5180"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["http://127.0.0.1:5180"]
+additional_redirect_urls = ["http://127.0.0.1:5180", "http://localhost:5181", "http://127.0.0.1:5181"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -397,6 +397,11 @@ deno_version = 2
 
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
+
+# Manna's MCP server: Claude sends no Supabase login, so the gateway mustn't ask for one. The function checks its own
+# connector key (manna.connector_keys) instead.
+[functions.manna-mcp]
+verify_jwt = false
 
 [analytics]
 enabled = true
