@@ -3,7 +3,7 @@
 // Spec: https://modelcontextprotocol.io/specification
 import { type Ctx, TOOLS, ToolError } from './tools.ts'
 
-export const SERVER = { name: 'manna', title: 'Manna', version: '0.1.0' }
+export const SERVER = { name: 'manna', title: 'Manna', version: '0.2.0' }
 const PROTOCOLS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05']
 
 export const INSTRUCTIONS = `These tools read and record one person's Manna: a money journal kept as a faithful steward (Philippine pesos).
@@ -17,6 +17,7 @@ Vocabulary, because it is not always the obvious one:
 - Bills are recurring: rent, utilities, subscriptions, and regular income such as salary. Paying one moves it to its next due date.
 - Goals are savings goals; adding to one only tracks it and moves no money.
 - Notes are "KATY's notes": things to remember without moving money. KATY is the app's mascot and companion.
+- History-only entries (history_only: true) are past entries the account balances already reflect. They count in totals, budgets, the tithe and loans, but don't change any balance.
 
 Working practice:
 - Dates are YYYY-MM-DD in Philippine time. overview reports today's date; use it rather than assuming.
@@ -28,6 +29,7 @@ Recording:
 - Nothing here deletes. A wrong entry is corrected with update_entry; removing one is done in the app.
 - Record only what the person said happened. If an amount or account is unclear, ask; if they only implied an entry, confirm before saving.
 - When the person names an account or category that doesn't exist, the error lists the valid ones: pick the right one or ask, don't guess repeatedly.
+- When the person says past entries are just for the record ("don't deduct", "my balances are already right", catching up on earlier days of the month), set history_only on each one. If it's unclear whether a past entry is already reflected in the balance, ask once and keep that answer for the rest of the batch.
 - After saving, tell them exactly what was recorded (amount, account, category, date) so a mistake is caught while they are reading.`
 
 type Msg = { jsonrpc?: string; id?: string | number | null; method?: string; params?: Record<string, unknown> }

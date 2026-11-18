@@ -26,6 +26,8 @@ export type Tx = {
   id: string; kind: TxKind; amount: number; occurred_on: string; account_id: string; to_account_id: string | null
   category_id: string | null; debt_id: string | null; recurring_id: string | null; note: string | null
   receipt_path?: string | null; created_at?: string
+  /** false = history only: counted in totals, budgets and the tithe, but not in account balances */
+  affects_balance?: boolean
 }
 export type Note = {
   id: string; body: string; person: string | null; amount: number | null; remind_on: string | null; done_at: string | null
@@ -108,13 +110,17 @@ export function dueLabel(s: string, today: string): string {
 
 // ---- money ----
 
-/** How each kind of transaction moves an account's balance. */
+/** Whether an entry moves money in an account. History-only entries (affects_balance = false) don't. */
+export const movesBalance = (t: Pick<Tx, 'affects_balance'>) => t.affects_balance !== false
+
+/** How each kind of transaction moves an account's balance. History-only entries are skipped. */
 export function balances(accounts: Account[], txs: Tx[]): Map<string, number> {
   const bal = new Map(accounts.map((a) => [a.id, Number(a.opening_balance)]))
   const add = (id: string | null, n: number) => {
     if (id && bal.has(id)) bal.set(id, round2(bal.get(id)! + n))
   }
   for (const t of txs) {
+    if (!movesBalance(t)) continue
     switch (t.kind) {
       case 'income':
       case 'debt_in':

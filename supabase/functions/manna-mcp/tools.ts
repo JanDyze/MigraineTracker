@@ -76,6 +76,21 @@ function oneOf<T extends string>(a: Args, key: string, values: readonly T[], fal
   return v as T
 }
 
+function flag(a: Args, key: string): boolean | null {
+  const v = a[key]
+  if (v == null) return null
+  if (typeof v !== 'boolean') throw new ToolError(`"${key}" should be true or false.`)
+  return v
+}
+
+/** history_only: a past entry the balances already reflect. Only sent to the database when true, so rows keep the default. */
+const HISTORY_ONLY = {
+  type: 'boolean',
+  description:
+    'true for a past entry that the account balances already reflect (e.g. spent before they started tracking, or before they last set their balances): it still counts in the month\'s totals, budgets, tithe and loans, but leaves account balances alone. Default false.',
+}
+const historyRow = (a: Args) => (flag(a, 'history_only') ? { affects_balance: false } : {})
+
 function limit(a: Args, fallback: number, max: number): number {
   const v = a.limit
   if (v == null) return fallback
@@ -140,6 +155,7 @@ function entryView(t: Tx, n: Names) {
     ...(loan && { loan: { id: loan.id, title: loan.title, person: n.person.get(loan.person_id) ?? null } }),
     ...(t.recurring_id && { bill: n.bill.get(t.recurring_id) ?? null }),
     note: t.note,
+    ...(t.affects_balance === false && { history_only: true }),
     ...(t.receipt_path && { has_receipt_photo: true }),
   }
 }
@@ -366,6 +382,7 @@ const listEntries: Tool = {
       from: from === '0000-01-01' ? null : from,
       to: to === '9999-12-31' ? null : to,
       matched: matched.length,
+      ...(matched.some((t) => t.affects_balance === false) && { history_only_entries: matched.filter((t) => t.affects_balance === false).length }),
       truncated: matched.length > max,
       totals: { income: total('income'), spent: total('expense'), given: total('giving'), transferred: total('transfer'), loan_money_out: total('debt_out'), loan_money_in: total('debt_in') },
       entries: matched.slice(0, max).map((t) => entryView(t, n)),
@@ -523,7 +540,7 @@ const addEntry: Tool = {
   name: 'add_entry',
   title: 'Record an entry',
   description:
-    'Record money spent (expense), received (income), given to church or others (giving: tithes, offerings, missions, help), or moved between the person\'s own accounts (transfer). For loans use record_loan, for a bill use pay_bill. Account and category take a name or an id (see get_setup). Returns exactly what was saved.',
+    'Record money spent (expense), received (income), given to church or others (giving: tithes, offerings, missions, help), or moved between the person\'s own accounts (transfer). For loans use record_loan, for a bill use pay_bill. Account and category take a name or an id (see get_setup). For past entries the balances already include, set history_only. Returns exactly what was saved.',
   inputSchema: obj({
     kind: S('What happened.', { enum: ['expense', 'income', 'giving', 'transfer'] }),
     amount: N('Pesos, more than zero.'),
@@ -532,6 +549,7 @@ const addEntry: Tool = {
     category: S('A category of the same kind. Left out: "Other" when that kind has one.'),
     date: DATE('When it happened (default today).'),
     note: S('Short label, like "Lunch at Jollibee".', { maxLength: 200 }),
+    history_only: HISTORY_ONLY,
   }, ['kind', 'amount', 'account']),
   readOnly: false,
   async run(a, { db, today }) {
@@ -541,7 +559,7 @@ const addEntry: Tool = {
     const account = pickAccount(d, text(a, 'account', { required: true })!)
     const occurred_on = day(a, 'date', today)!
     const note = text(a, 'note', { max: 200 })
-    const row: Partial<Tx> = { kind, amount, occurred_on, account_id: account.id, note, to_account_id: null, category_id: null, debt_id: null, recurring_id: null }
+    const row: Partial<Tx> = { kind, amount, occurred_on, account_id: account.id, note, to_account_id: null, category_id: null, debt_id: null, recurring_id: null, ...historyRow(a) }
     let to: Account | null = null
     let cat: Category | null = null
     if (kind === 'transfer') {
@@ -555,9 +573,10 @@ const addEntry: Tool = {
     }
     const saved = await db.insert('transactions', row)
     const after = balances(d.accounts, [...d.transactions, saved])
+    const balance = { [account.name]: after.get(account.id), ...(to && { [to.name]: after.get(to.id) }) }
     return {
       recorded: entryView(saved, names(d)),
-      balance_after: { [account.name]: after.get(account.id), ...(to && { [to.name]: after.get(to.id) }) },
+      ...(saved.affects_balance === false ? { history_only: 'counted in totals; balances unchanged', balance_now: balance } : { balance_after: balance }),
     }
   },
 }
@@ -566,7 +585,7 @@ const updateEntry: Tool = {
   name: 'update_entry',
   title: 'Correct an entry',
   description:
-    'Fix a mistake in an entry found with list_entries: its amount, date, account, category or note. The kind can\'t change, and nothing is deleted here; to undo an entry, the person removes it in the app.',
+    'Fix a mistake in an entry found with list_entries: its amount, date, account, category, note, or whether it is history only (history_only: true stops it moving a balance; false makes it count again). The kind can\'t change, and nothing is deleted here; to undo an entry, the person removes it in the app.',
   inputSchema: obj({
     id: S('The entry\'s id.'),
     amount: N('New amount in pesos.'),
@@ -575,6 +594,7 @@ const updateEntry: Tool = {
     to_account: S('Transfers only: new destination account.'),
     category: S('New category of the same kind (name or id).'),
     note: S('New note; an empty string clears it.', { maxLength: 200 }),
+    history_only: HISTORY_ONLY,
   }, ['id']),
   readOnly: false,
   async run(a, { db }) {
@@ -600,10 +620,16 @@ const updateEntry: Tool = {
       patch.category_id = pickCategory(d, text(a, 'category')!, t.kind).id
     }
     if (typeof a.note === 'string') patch.note = text(a, 'note', { max: 200 })
-    if (!Object.keys(patch).length) throw new ToolError('Nothing to change: give at least one of amount, date, account, to_account, category or note.')
+    const history = flag(a, 'history_only')
+    if (history != null) patch.affects_balance = !history
+    if (!Object.keys(patch).length) throw new ToolError('Nothing to change: give at least one of amount, date, account, to_account, category, note or history_only.')
     const saved = await db.update('transactions', t.id, patch)
     const n = names(d)
-    return { before: entryView(t, n), after: entryView(saved, n) }
+    const balancesMoved = ['amount', 'account_id', 'to_account_id', 'affects_balance'].some((k) => k in patch)
+    if (!balancesMoved) return { before: entryView(t, n), after: entryView(saved, n) }
+    const bal = balances(d.accounts, d.transactions.map((x) => (x.id === t.id ? saved : x)))
+    const touched = [...new Set([t.account_id, t.to_account_id, saved.account_id, saved.to_account_id])].filter(Boolean) as string[]
+    return { before: entryView(t, n), after: entryView(saved, n), balances_now: Object.fromEntries(touched.map((id) => [n.account.get(id) ?? id, bal.get(id) ?? 0])) }
   },
 }
 
@@ -617,6 +643,7 @@ const payBill: Tool = {
     account: S('Account it was paid from (default: the bill\'s account).'),
     amount: N('Amount actually paid, if different this time.'),
     date: DATE('When it was paid (default today).'),
+    history_only: HISTORY_ONLY,
   }, ['bill']),
   readOnly: false,
   async run(a, { db, today }) {
@@ -636,6 +663,7 @@ const payBill: Tool = {
       debt_id: null,
       recurring_id: bill.id,
       note: bill.title,
+      ...historyRow(a),
     })
     const next = nextDue(bill)
     await db.update('recurring', bill.id, { next_due: next })
@@ -647,7 +675,7 @@ const recordLoan: Tool = {
   name: 'record_loan',
   title: 'Record a loan',
   description:
-    'A new loan either way: "lent" when the person gave someone money to pay back, "borrowed" when someone lent to them. Adds the other person if they are new. With an account, it also records the money leaving (lent) or arriving (borrowed); leave the account out only for an old loan whose money was never in a tracked account.',
+    'A new loan either way: "lent" when the person gave someone money to pay back, "borrowed" when someone lent to them. Adds the other person if they are new. With an account, it also records the money leaving (lent) or arriving (borrowed); with history_only too, that entry is kept for the record without changing the balance (the balance already reflects it). Leave the account out only for an old loan whose money was never in a tracked account.',
   inputSchema: obj({
     direction: S('Which way.', { enum: ['lent', 'borrowed'] }),
     person: S('The other person\'s name.', { maxLength: 60 }),
@@ -657,6 +685,7 @@ const recordLoan: Tool = {
     date: DATE('When it happened (default today).'),
     due_on: DATE('When it should be paid back, if agreed.'),
     note: S('Anything else worth keeping.', { maxLength: 300 }),
+    history_only: HISTORY_ONLY,
   }, ['direction', 'person', 'amount']),
   readOnly: false,
   async run(a, { db, today }) {
@@ -665,6 +694,8 @@ const recordLoan: Tool = {
     const who = text(a, 'person', { required: true, max: 60 })!
     const amount = money(a, 'amount', { required: true })!
     const account = text(a, 'account') ? pickAccount(d, text(a, 'account')!) : null
+    const history = historyRow(a)
+    if (!account && 'affects_balance' in history) throw new ToolError('"history_only" needs an account: it marks the money movement, and without an account none is recorded.')
     const started_on = day(a, 'date', today)!
     const due_on = day(a, 'due_on')
     if (due_on && due_on < started_on) throw new ToolError('"due_on" is before the loan started.')
@@ -694,6 +725,7 @@ const recordLoan: Tool = {
         debt_id: debt.id,
         recurring_id: null,
         note: title,
+        ...history,
       })
     }
     const all = { ...d, people: newPerson ? [...d.people, person] : d.people, debts: [...d.debts, debt], transactions: entry ? [...d.transactions, entry] : d.transactions }
@@ -715,6 +747,7 @@ const recordLoanPayment: Tool = {
     amount: N('Pesos paid back this time.'),
     account: S('Account the money arrived in (repaid to me) or left (I repaid).'),
     date: DATE('When (default today).'),
+    history_only: HISTORY_ONLY,
   }, ['loan', 'amount', 'account']),
   readOnly: false,
   async run(a, { db, today }) {
@@ -735,6 +768,7 @@ const recordLoanPayment: Tool = {
       debt_id: loan.id,
       recurring_id: null,
       note: loan.title,
+      ...historyRow(a),
     })
     let closed = loan
     if (left - amount <= 0.005) closed = await db.update('debts', loan.id, { closed_at: new Date().toISOString() })
