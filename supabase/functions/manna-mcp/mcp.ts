@@ -17,7 +17,8 @@ Vocabulary, because it is not always the obvious one:
 - Budgets are a standing monthly limit per spending category. "Per day left" is what can still be spent each remaining day this month.
 - The tithe is a share (tithe_percent) of the month's income, compared with giving in a "Tithe" category.
 - Loans go either way: "owed_to_me" when they lent it, "i_owe" when they borrowed it. What's left is the amount less repayments.
-- Bills are recurring: rent, utilities, subscriptions, and regular income such as salary. Paying one moves it to its next due date.
+- Bills are recurring: rent, utilities, subscriptions, and regular income such as salary. Paying one moves it to its next due date. A bill with payments_left counts down and finishes after the last payment.
+- Credit cards and pay-later services (Atome, SPayLater) are "card" accounts. A purchase on one is an expense from the card (its balance goes negative: what's owed); paying the card is a transfer from a bank or e-wallet to the card, never a second expense. A card payment bill (kind "transfer", with to_card) reminds before each installment, and pay_bill records the transfer.
 - Goals are savings goals; adding to one only tracks it and moves no money.
 - Notes are "KATY's notes": things to remember without moving money. KATY is the app's mascot and companion.
 - History-only entries (history_only: true) are past entries the account balances already reflect. They count in totals, budgets, the tithe and loans, but don't change any balance.

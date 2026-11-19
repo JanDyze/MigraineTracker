@@ -18,9 +18,15 @@ export type Debt = {
 }
 export type Goal = { id: string; name: string; target: number; target_on: string | null; icon: string; closed_at: string | null }
 export type GoalEntry = { id: string; goal_id: string; amount: number; occurred_on: string; note: string | null }
+/** A bill's kind: a category kind, or 'transfer' for a card payment (bank or e-wallet → card / pay-later account) */
+export type BillKind = CategoryKind | 'transfer'
 export type Recurring = {
-  id: string; title: string; kind: CategoryKind; amount: number; account_id: string | null; category_id: string | null
+  id: string; title: string; kind: BillKind; amount: number; account_id: string | null; category_id: string | null
   frequency: Frequency; every: number; next_due: string; active: boolean; note: string | null
+  /** card payments: the card or pay-later account the money goes to */
+  to_account_id?: string | null
+  /** payments still to make; counts down when paid and the bill finishes at 0. null = it doesn't end */
+  payments_left?: number | null
 }
 export type Tx = {
   id: string; kind: TxKind; amount: number; occurred_on: string; account_id: string; to_account_id: string | null

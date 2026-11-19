@@ -208,8 +208,10 @@ export function billView(r: Tables['recurring'], n: Names, today: string) {
     amount: r.amount,
     repeats: frequencyLabel(r),
     next_due: r.next_due,
-    status: r.active ? dueLabel(r.next_due, today) : 'paused',
+    status: r.active ? dueLabel(r.next_due, today) : r.payments_left === 0 ? 'fully paid' : 'paused',
     account: r.account_id ? n.account.get(r.account_id) ?? null : null,
+    ...(r.kind === 'transfer' && { card_payment: true, to_card: r.to_account_id ? n.account.get(r.to_account_id) ?? null : null }),
+    ...(r.payments_left != null && { payments_left: r.payments_left }),
     category: r.category_id ? n.category.get(r.category_id) ?? null : null,
     note: r.note,
   }
@@ -652,7 +654,7 @@ const payBill: Tool = {
   name: 'pay_bill',
   title: 'Mark a bill paid',
   description:
-    'Record a bill (or regular income) as paid or received, the way the app\'s "Mark paid" does: it saves the entry and moves the bill to its next due date. Amount and account default to the bill\'s own.',
+    'Record a bill (or regular income) as paid or received, the way the app\'s "Mark paid" does: it saves the entry and moves the bill to its next due date. A card payment records a transfer from the paying account to the card. A bill with payments_left counts down, and the last payment finishes it. Amount and account default to the bill\'s own.',
   inputSchema: obj({
     bill: S('The bill\'s id (from list_bills) or its exact title.'),
     account: S('Account it was paid from (default: the bill\'s account).'),
@@ -664,25 +666,38 @@ const payBill: Tool = {
   async run(a, { db, today }) {
     const d = await db.load()
     const bill = pickById(d.recurring, text(a, 'bill'), 'bill', (r) => r.title, 'list_bills')
-    if (!bill.active) throw new ToolError(`"${bill.title}" is paused; resume it with update_bill (paused: false) first.`)
+    if (!bill.active) {
+      throw new ToolError(bill.payments_left === 0
+        ? `"${bill.title}" is fully paid. If more payments came up, give it payments_left with update_bill first.`
+        : `"${bill.title}" is paused; resume it with update_bill (paused: false) first.`)
+    }
+    const card = bill.kind === 'transfer'
     const ref = text(a, 'account')
-    const account = ref ? pickAccount(d, ref) : d.accounts.find((x) => x.id === bill.account_id) ?? d.accounts.find((x) => !x.archived)
+    const account = ref ? pickAccount(d, ref) : d.accounts.find((x) => x.id === bill.account_id) ?? d.accounts.find((x) => !x.archived && x.id !== bill.to_account_id)
     if (!account) throw new ToolError('Add an account first (add_account), so Manna knows where the money came from.')
+    if (card && (!bill.to_account_id || bill.to_account_id === account.id)) throw new ToolError('A card payment needs a card (to_card on update_bill) and a different account to pay from.')
     const saved = await db.insert('transactions', {
       kind: bill.kind,
       amount: money(a, 'amount') ?? bill.amount,
       occurred_on: day(a, 'date', today)!,
       account_id: account.id,
-      to_account_id: null,
-      category_id: bill.category_id,
+      to_account_id: card ? bill.to_account_id! : null,
+      category_id: card ? null : bill.category_id,
       debt_id: null,
       recurring_id: bill.id,
       note: bill.title,
       ...historyRow(a),
     })
     const next = nextDue(bill)
-    await db.update('recurring', bill.id, { next_due: next })
-    return { recorded: entryView(saved, names(d)), bill: bill.title, was_due: bill.next_due, next_due: next }
+    const left = bill.payments_left == null ? null : Math.max(0, bill.payments_left - 1)
+    await db.update('recurring', bill.id, { next_due: next, ...(left != null && { payments_left: left }), ...(left === 0 && { active: false }) })
+    return {
+      recorded: entryView(saved, names(d)),
+      bill: bill.title,
+      was_due: bill.next_due,
+      ...(left === 0 ? { finished: 'that was the last payment; the bill is fully paid and stops reminding' } : { next_due: next }),
+      ...(left != null && left > 0 && { payments_left: left }),
+    }
   },
 }
 

@@ -3,7 +3,7 @@
 // photos, manage connector links, and delete anything. The friendly everyday tools (add_entry, pay_bill…) live in
 // tools.ts; these build on the same helpers and the same Db, so every row stays pinned to the key's owner.
 import {
-  type Account, type AccountKind, type BalanceCheck, type Category, type CategoryKind, type Data, type Debt, type Frequency,
+  type Account, type AccountKind, type BalanceCheck, type BillKind, type Category, type CategoryKind, type Data, type Debt, type Frequency,
   type Goal, type Recurring, type Tx, balances, debtPaid, goalSaved, isDate, monthOf, round2, shiftMonth, withinDay,
 } from './money.ts'
 import {
@@ -407,7 +407,7 @@ const setBudget: Tool = {
 
 // ---------------------------------------------------------------- bills
 
-function billFields(a: Args, d: Data, kind: CategoryKind, patch: Partial<Recurring>) {
+function billFields(a: Args, d: Data, kind: BillKind, patch: Partial<Recurring>) {
   if (has(a, 'title')) patch.title = text(a, 'title', { required: true, max: 60 })!
   if (has(a, 'amount')) patch.amount = money(a, 'amount', { required: true })!
   if (has(a, 'frequency')) patch.frequency = oneOf(a, 'frequency', FREQUENCIES) as Frequency
@@ -416,11 +416,31 @@ function billFields(a: Args, d: Data, kind: CategoryKind, patch: Partial<Recurri
   if (has(a, 'next_due')) patch.next_due = day(a, 'next_due')!
   if (clears(a, 'account')) patch.account_id = null
   else if (text(a, 'account')) patch.account_id = pickAccount(d, text(a, 'account')!).id
-  if (clears(a, 'category')) patch.category_id = null
-  else if (text(a, 'category')) patch.category_id = pickCategory(d, text(a, 'category')!, kind).id
+  if (kind === 'transfer') {
+    if (text(a, 'category')) throw new ToolError('A card payment has no category; the purchases on the card carry them.')
+    if (text(a, 'to_card')) patch.to_account_id = pickAccount(d, text(a, 'to_card')!, 'to_card').id
+  } else {
+    if (text(a, 'to_card')) throw new ToolError('Only card payments (kind "transfer") have a "to_card".')
+    if (clears(a, 'category')) patch.category_id = null
+    else if (text(a, 'category')) patch.category_id = pickCategory(d, text(a, 'category')!, kind).id
+  }
+  if (clears(a, 'payments_left')) patch.payments_left = null
+  else {
+    const left = whole(a, 'payments_left', 0, 999)
+    if (left != null) patch.payments_left = left
+  }
   if (clears(a, 'note')) patch.note = null
   else if (has(a, 'note')) patch.note = text(a, 'note', { max: 200 })
 }
+
+/** A card payment's two accounts must differ (the database refuses it too). */
+function checkCard(bill: Partial<Recurring>) {
+  if (bill.kind !== 'transfer') return
+  if (!bill.to_account_id) throw new ToolError('A card payment needs "to_card": the card or pay-later account it pays (add it with add_account, kind "card", if it\'s new).')
+  if (bill.account_id && bill.account_id === bill.to_account_id) throw new ToolError('Pay the card from a different account than the card itself.')
+}
+
+const BILL_KINDS = [...CATEGORY_KINDS, 'transfer'] as const
 
 const BILL_FIELDS = {
   title: S('Name, like "Meralco" or "Salary".', { maxLength: 60 }),
@@ -429,22 +449,26 @@ const BILL_FIELDS = {
   every: N('Every how many weeks/months/years (default 1).'),
   next_due: DATE('Next due date.'),
   account: S('Usual account (name or id); empty string clears it.'),
-  category: S('Category of the same kind (name or id); empty string clears it.'),
+  category: S('Category of the same kind (name or id); empty string clears it. Not for card payments.'),
+  to_card: S('Card payments only: the card or pay-later account it pays (name or id).'),
+  payments_left: N('Payments still to make, for something that ends (installments, the last months of a loan); each payment counts it down and the last one finishes the bill. Empty string clears it (no end).'),
   note: S('Optional note; empty string clears it.', { maxLength: 200 }),
 }
 
 const addBill: Tool = {
   name: 'add_bill',
   title: 'Add a bill or regular income',
-  description: 'A recurring bill (rent, utilities, subscriptions, loans to a bank), regular income (salary) or regular giving. It shows in Plan → Bills and reminds before it\'s due; pay_bill records each payment.',
-  inputSchema: obj({ kind: S('Expense (a bill), income, or giving (default expense).', { enum: [...CATEGORY_KINDS] }), ...BILL_FIELDS }, ['title', 'amount', 'next_due']),
+  description: 'A recurring bill (rent, utilities, subscriptions, loans to a bank), regular income (salary), regular giving, or a card payment: kind "transfer" pays a credit card or pay-later account (Atome, SPayLater) from "account" to "to_card", so the purchases on the card aren\'t counted as spending twice. Give payments_left for something that ends. It shows in Plan → Bills and reminds before it\'s due; pay_bill records each payment.',
+  inputSchema: obj({ kind: S('Expense (a bill), income, giving, or transfer (a card payment) (default expense).', { enum: [...BILL_KINDS] }), ...BILL_FIELDS }, ['title', 'amount', 'next_due']),
   readOnly: false,
   async run(a, { db, today }) {
     const d = await db.load()
-    const kind = oneOf(a, 'kind', CATEGORY_KINDS, 'expense') as CategoryKind
+    const kind = oneOf(a, 'kind', BILL_KINDS, 'expense') as BillKind
     const row: Partial<Recurring> = { kind, frequency: 'monthly', every: 1, active: true, account_id: null, category_id: null, note: null }
     billFields(a, d, kind, row)
-    if (!row.category_id) row.category_id = d.categories.find((c) => c.kind === kind && !c.archived && lower(c.name) === (kind === 'expense' ? 'bills' : kind === 'income' ? 'salary' : 'tithe'))?.id ?? null
+    checkCard(row)
+    if (row.payments_left === 0) throw new ToolError('"payments_left" is 0: nothing left to pay. Leave it out if the bill doesn\'t end.')
+    if (!row.category_id && kind !== 'transfer') row.category_id = d.categories.find((c) => c.kind === kind && !c.archived && lower(c.name) === (kind === 'expense' ? 'bills' : kind === 'income' ? 'salary' : 'tithe'))?.id ?? null
     const saved = await db.insert('recurring', row)
     return { added: billView(saved, names(d), today) }
   },
@@ -453,7 +477,7 @@ const addBill: Tool = {
 const updateBill: Tool = {
   name: 'update_bill',
   title: 'Change a bill',
-  description: 'Change a bill\'s name, amount, schedule, next due date, account, category or note, or pause/resume it.',
+  description: 'Change a bill\'s name, amount, schedule, next due date, account, category, card (to_card), payments left or note, or pause/resume it. Giving a fully paid bill more payments_left starts it reminding again.',
   inputSchema: obj({ bill: S('The bill\'s id (from list_bills) or its exact title.'), ...BILL_FIELDS, paused: B('true to pause reminders, false to resume.') }, ['bill']),
   readOnly: false,
   async run(a, { db, today }) {
@@ -461,9 +485,14 @@ const updateBill: Tool = {
     const bill = pickById(d.recurring, text(a, 'bill'), 'bill', (r) => r.title, 'list_bills')
     const patch: Partial<Recurring> = {}
     billFields(a, d, bill.kind, patch)
+    checkCard({ ...bill, ...patch })
     const paused = bool(a, 'paused')
     if (paused != null) patch.active = !paused
-    nothing(patch, 'title, amount, frequency, every, next_due, account, category, note or paused')
+    else if (patch.payments_left != null) {
+      if (patch.payments_left > 0 && bill.payments_left === 0) patch.active = true // more to pay after all
+      if (patch.payments_left === 0) patch.active = false
+    }
+    nothing(patch, 'title, amount, frequency, every, next_due, account, category, to_card, payments_left, note or paused')
     const saved = await db.update('recurring', bill.id, patch)
     const n = names(d)
     return { before: billView(bill, n, today), after: billView(saved, n, today) }
