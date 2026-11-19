@@ -8,7 +8,11 @@ export type Frequency = 'weekly' | 'monthly' | 'yearly'
 export type Direction = 'owed_to_me' | 'i_owe'
 
 export type Settings = { user_id: string; currency: string; tithe_percent: number; onboarded_at: string | null }
-export type Account = { id: string; name: string; kind: AccountKind; opening_balance: number; sort: number; archived: boolean }
+export type Account = {
+  id: string; name: string; kind: AccountKind; opening_balance: number; sort: number; archived: boolean
+  /** cards: the spending limit; null = not set */
+  credit_limit?: number | null
+}
 export type Category = { id: string; name: string; kind: CategoryKind; icon: string; sort: number; archived: boolean }
 export type Budget = { id: string; category_id: string; amount: number }
 export type Person = { id: string; name: string; note: string | null }
@@ -67,7 +71,7 @@ export type Data = { settings: Settings } & { [T in TableName]: Tables[T][] }
 export const TABLES: TableName[] = ['accounts', 'categories', 'budgets', 'people', 'debts', 'goals', 'goal_entries', 'recurring', 'transactions', 'notes', 'balance_checks']
 
 // Postgres numeric arrives as a string; keep money as numbers everywhere.
-const MONEY = ['opening_balance', 'amount', 'principal', 'target', 'tithe_percent', 'recorded', 'actual'] as const
+const MONEY = ['opening_balance', 'amount', 'principal', 'target', 'tithe_percent', 'recorded', 'actual', 'credit_limit'] as const
 export function clean<T>(row: T): T {
   const r = { ...(row as Record<string, unknown>) }
   for (const k of MONEY) if (k in r && r[k] != null) r[k] = Number(r[k])
@@ -138,6 +142,25 @@ export function dueLabel(s: string, today: string): string {
 export const movesBalance = (t: Pick<Tx, 'affects_balance'>) => t.affects_balance !== false
 
 /** How each kind of transaction moves an account's balance. History-only entries are skipped. */
+/** A card's standing: what's owed on it and, with a limit, what's left to spend (app/src/lib/money.ts cardStatus). */
+export function cardStatus(a: Pick<Account, 'credit_limit'>, balance: number) {
+  const owed = round2(Math.max(0, -balance))
+  const limit = a.credit_limit ?? null
+  return { owed, limit, left: limit == null ? null : round2(Math.max(0, limit - owed)) }
+}
+
+/** Money in accounts (all but card debt), owed on cards, and free to use (app/src/lib/money.ts moneyPicture). */
+export function moneyPicture(accounts: Account[], bal: Map<string, number>) {
+  let have = 0
+  let owed = 0
+  for (const a of accounts) {
+    const b = bal.get(a.id) ?? 0
+    if (a.kind === 'card' && b < 0) owed -= b
+    else have += b
+  }
+  return { have: round2(have), owed: round2(owed), free: round2(have - owed) }
+}
+
 export function balances(accounts: Account[], txs: Tx[]): Map<string, number> {
   const bal = new Map(accounts.map((a) => [a.id, Number(a.opening_balance)]))
   const add = (id: string | null, n: number) => {

@@ -3,8 +3,8 @@
 // Supabase in the Edge Function and against in-memory rows in the tests.
 import {
   type Account, type Category, type CategoryKind, type Data, type Debt, type Note, type Settings, type TableName, type Tables, type Tx,
-  addDays, balances, debtLeft, debtPaid, daysBetween, dueLabel, endOfMonth, frequencyLabel, goalSaved, isDate, monthOf, monthPlan,
-  monthTotals, nextDue, round2, shiftMonth, tithe, withinDay,
+  addDays, balances, cardStatus, debtLeft, debtPaid, daysBetween, dueLabel, endOfMonth, frequencyLabel, goalSaved, isDate, monthOf, monthPlan,
+  moneyPicture, monthTotals, nextDue, round2, shiftMonth, tithe, withinDay,
 } from './money.ts'
 
 export interface Db {
@@ -252,7 +252,12 @@ export const accountsView = (d: Data) => {
   return d.accounts
     .filter((a) => !a.archived)
     .sort((a, b) => a.sort - b.sort)
-    .map((a) => ({ id: a.id, name: a.name, kind: a.kind, balance: bal.get(a.id) ?? 0 }))
+    .map((a) => {
+      const balance = bal.get(a.id) ?? 0
+      if (a.kind !== 'card') return { id: a.id, name: a.name, kind: a.kind, balance }
+      const c = cardStatus(a, balance)
+      return { id: a.id, name: a.name, kind: a.kind, balance, owed: c.owed, ...(c.limit != null && { credit_limit: c.limit, left_to_spend: c.left }) }
+    })
 }
 
 // ---------------------------------------------------------------- read tools
@@ -283,6 +288,10 @@ const overview: Tool = {
       month,
       currency: d.settings.currency,
       total_balance: round2(accounts.reduce((s, a) => s + a.balance, 0)),
+      ...(() => {
+        const p = moneyPicture(d.accounts.filter((x) => !x.archived), balances(d.accounts, d.transactions))
+        return p.owed > 0 ? { money: { in_accounts: p.have, owed_on_cards: p.owed, free_to_use: p.free } } : {}
+      })(),
       accounts,
       this_month: {
         income: totals.income,

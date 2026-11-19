@@ -4,7 +4,7 @@
 // tools.ts; these build on the same helpers and the same Db, so every row stays pinned to the key's owner.
 import {
   type Account, type AccountKind, type BalanceCheck, type BillKind, type Category, type CategoryKind, type Data, type Debt, type Frequency,
-  type Goal, type Recurring, type Tx, balances, debtPaid, goalSaved, isDate, monthOf, round2, shiftMonth, withinDay,
+  type Goal, type Recurring, type Tx, balances, cardStatus, debtPaid, goalSaved, isDate, monthOf, round2, shiftMonth, withinDay,
 } from './money.ts'
 import {
   type Args, type Tool, DATE, N, S, ToolError, billView, day, entryView, goalView, loanView, lower, money, names,
@@ -52,7 +52,13 @@ function nothing(patch: object, fields: string) {
 function accountView(a: Account, d: Data) {
   const bal = balances(d.accounts, d.transactions)
   const entries = d.transactions.filter((t) => t.account_id === a.id || t.to_account_id === a.id).length
-  return { id: a.id, name: a.name, kind: a.kind, opening_balance: a.opening_balance, balance: bal.get(a.id) ?? 0, hidden: a.archived, position: a.sort, entries }
+  const balance = bal.get(a.id) ?? 0
+  const card = a.kind === 'card' ? cardStatus(a, balance) : null
+  return {
+    id: a.id, name: a.name, kind: a.kind, opening_balance: a.opening_balance, balance,
+    ...(card && { owed: card.owed, credit_limit: card.limit, ...(card.left != null && { left_to_spend: card.left }) }),
+    hidden: a.archived, position: a.sort, entries,
+  }
 }
 
 function categoryView(c: Category, d: Data) {
@@ -194,20 +200,25 @@ const listAccounts: Tool = {
 const addAccount: Tool = {
   name: 'add_account',
   title: 'Add an account',
-  description: 'A new place money sits: cash, bank, ewallet (GCash, Maya, Wise), card (credit card) or savings. opening_balance is what it holds now; for a credit card give what is owed as a negative number. Bank and e-wallet names (BDO, GCash, GoTyme…) get their logo in the app.',
+  description: 'A new place money sits: cash, bank, ewallet (GCash, Maya, Wise), card (a credit card or pay-later like Atome or SPayLater) or savings. opening_balance is what it holds now; for a card give what is owed as a negative number, and credit_limit if known so the app can show what\'s left to spend. Bank, e-wallet and pay-later names (BDO, GCash, GoTyme, Atome…) get their logo in the app.',
   inputSchema: obj({
     name: S('Name, like "BDO" or "GCash".', { maxLength: 60 }),
     kind: S('What kind of account.', { enum: [...ACCOUNT_KINDS] }),
     opening_balance: N('What it holds now, in pesos (default 0; negative for card debt).'),
+    credit_limit: N('Cards only: the total spending limit in pesos.'),
   }, ['name', 'kind']),
   readOnly: false,
   async run(a, { db }) {
     const d = await db.load()
     const name = text(a, 'name', { required: true, max: 60 })!
     uniqueName(d.accounts, name, null, 'an account')
+    const kind = oneOf(a, 'kind', ACCOUNT_KINDS) as AccountKind
+    const limit = money(a, 'credit_limit')
+    if (limit != null && kind !== 'card') throw new ToolError('Only cards have a "credit_limit".')
     const saved = await db.insert('accounts', {
-      name, kind: oneOf(a, 'kind', ACCOUNT_KINDS), opening_balance: signed(a, 'opening_balance') ?? 0,
+      name, kind, opening_balance: signed(a, 'opening_balance') ?? 0,
       sort: d.accounts.length ? Math.max(...d.accounts.map((x) => x.sort)) + 1 : 0, archived: false,
+      ...(limit != null && { credit_limit: limit }),
     })
     return { added: accountView(saved, { ...d, accounts: [...d.accounts, saved] }) }
   },
@@ -216,12 +227,13 @@ const addAccount: Tool = {
 const updateAccount: Tool = {
   name: 'update_account',
   title: 'Change an account',
-  description: 'Rename an account, change its kind or opening balance, hide or show it (hidden accounts keep their history), or move it in the list. Changing the opening balance shifts its current balance by the same amount.',
+  description: 'Rename an account, change its kind, opening balance or credit limit (cards), hide or show it (hidden accounts keep their history), or move it in the list. Changing the opening balance shifts its current balance by the same amount.',
   inputSchema: obj({
     account: S('Account name or id.'),
     name: S('New name.', { maxLength: 60 }),
     kind: S('New kind.', { enum: [...ACCOUNT_KINDS] }),
     opening_balance: N('New opening balance in pesos (0 allowed; negative for card debt).'),
+    credit_limit: N('Cards only: the total spending limit in pesos; empty string or 0 clears it.'),
     hidden: B('true to hide it, false to show it again.'),
     position: N('Place in the list, 0 first.'),
   }, ['account']),
@@ -238,11 +250,16 @@ const updateAccount: Tool = {
       if (v == null) throw new ToolError('"opening_balance" should be a number of pesos.')
       patch.opening_balance = v
     }
+    if (clears(a, 'credit_limit') || a.credit_limit === 0) patch.credit_limit = null
+    else if (has(a, 'credit_limit')) {
+      if ((patch.kind ?? acc.kind) !== 'card') throw new ToolError('Only cards have a "credit_limit".')
+      patch.credit_limit = money(a, 'credit_limit', { required: true })!
+    }
     const hidden = bool(a, 'hidden')
     if (hidden != null) patch.archived = hidden
     const pos = whole(a, 'position', 0, 999)
     if (pos != null) patch.sort = pos
-    nothing(patch, 'name, kind, opening_balance, hidden or position')
+    nothing(patch, 'name, kind, opening_balance, credit_limit, hidden or position')
     const saved = await db.update('accounts', acc.id, patch)
     const after = { ...d, accounts: d.accounts.map((x) => (x.id === acc.id ? saved : x)) }
     return { before: accountView(acc, d), after: accountView(saved, after) }
